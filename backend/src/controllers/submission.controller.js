@@ -27,6 +27,50 @@ function evaluateSubmission({ sourceCode, language, difficulty }) {
   return "wrong_answer";
 }
 
+async function updateStudentProgress(client, { studentId, problemId, status, submittedAt }) {
+  await client.query(
+    `
+      INSERT INTO student_progress (
+        student_id,
+        problem_id,
+        total_submissions,
+        accepted_submissions,
+        wrong_answer_submissions,
+        time_limit_submissions,
+        latest_status,
+        first_attempted_at,
+        last_submitted_at,
+        solved_at,
+        updated_at
+      )
+      VALUES (
+        $1,
+        $2,
+        1,
+        CASE WHEN $3 = 'accepted' THEN 1 ELSE 0 END,
+        CASE WHEN $3 = 'wrong_answer' THEN 1 ELSE 0 END,
+        CASE WHEN $3 = 'time_limit' THEN 1 ELSE 0 END,
+        $3,
+        $4,
+        $4,
+        CASE WHEN $3 = 'accepted' THEN $4 ELSE NULL END,
+        NOW()
+      )
+      ON CONFLICT (student_id, problem_id)
+      DO UPDATE SET
+        total_submissions = student_progress.total_submissions + 1,
+        accepted_submissions = student_progress.accepted_submissions + CASE WHEN EXCLUDED.latest_status = 'accepted' THEN 1 ELSE 0 END,
+        wrong_answer_submissions = student_progress.wrong_answer_submissions + CASE WHEN EXCLUDED.latest_status = 'wrong_answer' THEN 1 ELSE 0 END,
+        time_limit_submissions = student_progress.time_limit_submissions + CASE WHEN EXCLUDED.latest_status = 'time_limit' THEN 1 ELSE 0 END,
+        latest_status = EXCLUDED.latest_status,
+        last_submitted_at = EXCLUDED.last_submitted_at,
+        solved_at = COALESCE(student_progress.solved_at, EXCLUDED.solved_at),
+        updated_at = NOW()
+    `,
+    [studentId, problemId, status, submittedAt]
+  );
+}
+
 export async function createSubmission(req, res, next) {
   const { studentId, problemId, language, sourceCode } = req.body;
 
@@ -36,8 +80,16 @@ export async function createSubmission(req, res, next) {
     });
   }
 
+  if (req.auth?.role !== "admin" && req.auth?.userId !== studentId) {
+    return res.status(403).json({
+      message: "You do not have permission to submit for another student."
+    });
+  }
+
+  const client = await pool.connect();
+
   try {
-    const problemResult = await pool.query(
+    const problemResult = await client.query(
       `
         SELECT id, difficulty
         FROM problems
@@ -52,7 +104,7 @@ export async function createSubmission(req, res, next) {
       });
     }
 
-    const studentResult = await pool.query(
+    const studentResult = await client.query(
       `
         SELECT id
         FROM users
@@ -67,28 +119,87 @@ export async function createSubmission(req, res, next) {
       });
     }
 
+    const testCaseCountResult = await client.query(
+      `
+        SELECT COUNT(*)::int AS total_test_cases
+        FROM test_cases
+        WHERE problem_id = $1
+      `,
+      [problemId]
+    );
+
     const normalizedLanguage = language.trim().toLowerCase();
     const status = evaluateSubmission({
       sourceCode,
       language: normalizedLanguage,
       difficulty: problemResult.rows[0].difficulty
     });
+    const totalTestCases = testCaseCountResult.rows[0].total_test_cases || 0;
+    const passedTestCases =
+      status === "accepted" ? totalTestCases : status === "wrong_answer" ? Math.max(0, totalTestCases - 1) : 0;
+    const executionTimeMs = Math.min(2000, sourceCode.trim().length * 3);
+    const memoryKb = 2048 + normalizedLanguage.length * 128;
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `
-        INSERT INTO submissions (student_id, problem_id, language, source_code, status)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, student_id, problem_id, language, source_code, status, submitted_at
+        INSERT INTO submissions (
+          student_id,
+          problem_id,
+          language,
+          source_code,
+          status,
+          passed_test_cases,
+          total_test_cases,
+          execution_time_ms,
+          memory_kb
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING
+          id,
+          student_id,
+          problem_id,
+          language,
+          source_code,
+          status,
+          passed_test_cases,
+          total_test_cases,
+          execution_time_ms,
+          memory_kb,
+          submitted_at
       `,
-      [studentId, problemId, normalizedLanguage, sourceCode.trim(), status]
+      [
+        studentId,
+        problemId,
+        normalizedLanguage,
+        sourceCode.trim(),
+        status,
+        passedTestCases,
+        totalTestCases,
+        executionTimeMs,
+        memoryKb
+      ]
     );
+
+    await updateStudentProgress(client, {
+      studentId,
+      problemId,
+      status,
+      submittedAt: result.rows[0].submitted_at
+    });
+
+    await client.query("COMMIT");
 
     res.status(201).json({
       message: "Solution submitted successfully.",
       submission: result.rows[0]
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     next(error);
+  } finally {
+    client.release();
   }
 }
 
@@ -115,11 +226,92 @@ export async function getStudentSubmissions(req, res, next) {
           s.language,
           s.source_code,
           s.status,
+          s.passed_test_cases,
+          s.total_test_cases,
+          s.execution_time_ms,
+          s.memory_kb,
           s.submitted_at
         FROM submissions s
         JOIN problems p ON p.id = s.problem_id
         WHERE s.student_id = $1
         ${problemFilter}
+        ORDER BY s.submitted_at DESC
+      `,
+      values
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminSubmissions(req, res, next) {
+  const studentId = req.query.studentId?.trim() ?? "";
+  const problemId = req.query.problemId?.trim() ?? "";
+  const status = req.query.status?.trim().toLowerCase() ?? "";
+  const language = req.query.language?.trim().toLowerCase() ?? "";
+
+  if (status && !["accepted", "wrong_answer", "time_limit"].includes(status)) {
+    return res.status(400).json({
+      message: "Status filter must be accepted, wrong_answer, or time_limit."
+    });
+  }
+
+  if (language && !["cpp", "java", "python", "javascript"].includes(language)) {
+    return res.status(400).json({
+      message: "Language filter must be cpp, java, python, or javascript."
+    });
+  }
+
+  try {
+    const values = [];
+    const filters = [];
+
+    if (studentId) {
+      values.push(studentId);
+      filters.push(`s.student_id = $${values.length}`);
+    }
+
+    if (problemId) {
+      values.push(problemId);
+      filters.push(`s.problem_id = $${values.length}`);
+    }
+
+    if (status) {
+      values.push(status);
+      filters.push(`s.status = $${values.length}`);
+    }
+
+    if (language) {
+      values.push(language);
+      filters.push(`s.language = $${values.length}`);
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+
+    const result = await pool.query(
+      `
+        SELECT
+          s.id,
+          s.student_id,
+          u.full_name AS student_name,
+          u.email AS student_email,
+          s.problem_id,
+          p.title AS problem_title,
+          p.difficulty,
+          s.language,
+          s.source_code,
+          s.status,
+          s.passed_test_cases,
+          s.total_test_cases,
+          s.execution_time_ms,
+          s.memory_kb,
+          s.submitted_at
+        FROM submissions s
+        JOIN users u ON u.id = s.student_id
+        JOIN problems p ON p.id = s.problem_id
+        ${whereClause}
         ORDER BY s.submitted_at DESC
       `,
       values
@@ -139,14 +331,15 @@ export async function getStudentProgress(req, res, next) {
       `
         SELECT
           p.difficulty,
-          COUNT(s.id)::int AS total_submissions,
-          COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_submissions,
-          COUNT(*) FILTER (WHERE s.status = 'wrong_answer')::int AS wrong_answer_submissions,
-          COUNT(*) FILTER (WHERE s.status = 'time_limit')::int AS time_limit_submissions
+          COALESCE(SUM(sp.total_submissions), 0)::int AS total_submissions,
+          COALESCE(SUM(sp.accepted_submissions), 0)::int AS accepted_submissions,
+          COALESCE(SUM(sp.wrong_answer_submissions), 0)::int AS wrong_answer_submissions,
+          COALESCE(SUM(sp.time_limit_submissions), 0)::int AS time_limit_submissions,
+          COUNT(sp.id) FILTER (WHERE sp.solved_at IS NOT NULL)::int AS solved_problems
         FROM problems p
-        LEFT JOIN submissions s
-          ON s.problem_id = p.id
-         AND s.student_id = $1
+        LEFT JOIN student_progress sp
+          ON sp.problem_id = p.id
+         AND sp.student_id = $1
         GROUP BY p.difficulty
       `,
       [studentId]
@@ -158,21 +351,24 @@ export async function getStudentProgress(req, res, next) {
         total_submissions: 0,
         accepted_submissions: 0,
         wrong_answer_submissions: 0,
-        time_limit_submissions: 0
+        time_limit_submissions: 0,
+        solved_problems: 0
       },
       medium: {
         difficulty: "medium",
         total_submissions: 0,
         accepted_submissions: 0,
         wrong_answer_submissions: 0,
-        time_limit_submissions: 0
+        time_limit_submissions: 0,
+        solved_problems: 0
       },
       hard: {
         difficulty: "hard",
         total_submissions: 0,
         accepted_submissions: 0,
         wrong_answer_submissions: 0,
-        time_limit_submissions: 0
+        time_limit_submissions: 0,
+        solved_problems: 0
       }
     };
 

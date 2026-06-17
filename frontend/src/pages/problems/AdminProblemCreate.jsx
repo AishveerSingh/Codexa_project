@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { getAdminSession, getAuthHeaders } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const initialProblemForm = {
   title: "",
   difficulty: "easy",
-  statement: ""
+  statement: "",
+  inputFormat: "",
+  outputFormat: "",
+  constraintsText: "",
+  examplesText: "",
+  tagsText: "",
+  sampleInput: "",
+  sampleOutput: ""
 };
 
 export default function AdminProblemCreate() {
   const navigate = useNavigate();
+  const session = getAdminSession();
   const [problemForm, setProblemForm] = useState(initialProblemForm);
   const [status, setStatus] = useState({
     message: "",
@@ -34,13 +43,39 @@ export default function AdminProblemCreate() {
       error: ""
     });
 
+    const tags = problemForm.tagsText
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    const sampleTestCases =
+      problemForm.sampleInput.trim() && problemForm.sampleOutput.trim()
+        ? [
+            {
+              input_data: problemForm.sampleInput,
+              expected_output: problemForm.sampleOutput,
+              sort_order: 0
+            }
+          ]
+        : [];
+
     try {
       const response = await fetch(`${apiBaseUrl}/problems`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...getAuthHeaders(session?.token)
         },
-        body: JSON.stringify(problemForm)
+        body: JSON.stringify({
+          title: problemForm.title,
+          difficulty: problemForm.difficulty,
+          statement: problemForm.statement,
+          inputFormat: problemForm.inputFormat,
+          outputFormat: problemForm.outputFormat,
+          constraintsText: problemForm.constraintsText,
+          examplesText: problemForm.examplesText,
+          tags,
+          sampleTestCases
+        })
       });
 
       const data = await response.json();
@@ -78,9 +113,12 @@ export default function AdminProblemCreate() {
             <p className="auth-kicker">Admin Question Creator</p>
             <h1>Add a new coding question.</h1>
             <p className="detail-copy">
-              Fill in the title, difficulty, and statement. After saving, the question list will
-              open automatically.
+              Fill in the title, difficulty, statement, tags, and a sample test case. After
+              saving, the question list will open automatically.
             </p>
+            {!session?.token ? (
+              <p className="form-status error">Log in as an admin to create questions.</p>
+            ) : null}
           </div>
         </div>
 
@@ -112,6 +150,18 @@ export default function AdminProblemCreate() {
             <option value="hard">Hard</option>
           </select>
 
+          <label className="form-field" htmlFor="tagsText">
+            Tags
+          </label>
+          <input
+            id="tagsText"
+            name="tagsText"
+            type="text"
+            placeholder="array, loops, greedy"
+            value={problemForm.tagsText}
+            onChange={handleChange}
+          />
+
           <label className="form-field" htmlFor="statement">
             Problem statement
           </label>
@@ -125,7 +175,88 @@ export default function AdminProblemCreate() {
             required
           />
 
-          <button className="auth-button admin-button" type="submit" disabled={isSubmitting}>
+          <label className="form-field" htmlFor="inputFormat">
+            Input format
+          </label>
+          <textarea
+            id="inputFormat"
+            name="inputFormat"
+            placeholder="Describe the input format"
+            value={problemForm.inputFormat}
+            onChange={handleChange}
+            rows="4"
+          />
+
+          <label className="form-field" htmlFor="outputFormat">
+            Output format
+          </label>
+          <textarea
+            id="outputFormat"
+            name="outputFormat"
+            placeholder="Describe the output format"
+            value={problemForm.outputFormat}
+            onChange={handleChange}
+            rows="4"
+          />
+
+          <label className="form-field" htmlFor="constraintsText">
+            Constraints
+          </label>
+          <textarea
+            id="constraintsText"
+            name="constraintsText"
+            placeholder="1 <= n <= 10^5"
+            value={problemForm.constraintsText}
+            onChange={handleChange}
+            rows="4"
+          />
+
+          <label className="form-field" htmlFor="examplesText">
+            Examples
+          </label>
+          <textarea
+            id="examplesText"
+            name="examplesText"
+            placeholder="Explain examples or walkthroughs"
+            value={problemForm.examplesText}
+            onChange={handleChange}
+            rows="5"
+          />
+
+          <div className="detail-grid detail-grid-tight">
+            <div>
+              <label className="form-field" htmlFor="sampleInput">
+                Sample input
+              </label>
+              <textarea
+                id="sampleInput"
+                name="sampleInput"
+                rows="5"
+                placeholder="1 2 3"
+                value={problemForm.sampleInput}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label className="form-field" htmlFor="sampleOutput">
+                Sample output
+              </label>
+              <textarea
+                id="sampleOutput"
+                name="sampleOutput"
+                rows="5"
+                placeholder="6"
+                value={problemForm.sampleOutput}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <button
+            className="auth-button admin-button"
+            type="submit"
+            disabled={isSubmitting || !session?.token}
+          >
             {isSubmitting ? "Saving..." : "Add coding question"}
           </button>
         </form>

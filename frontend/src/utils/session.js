@@ -1,20 +1,47 @@
 const STUDENT_STORAGE_KEY = "coding_platform_student";
 const ADMIN_STORAGE_KEY = "coding_platform_admin";
 
-export function saveStudentSession(user) {
-  localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(user));
+function readSession(storageKey) {
+  const stored = localStorage.getItem(storageKey);
+  return stored ? JSON.parse(stored) : null;
+}
+
+function writeSession(storageKey, session) {
+  localStorage.setItem(storageKey, JSON.stringify(session));
+}
+
+function clearSession(storageKey) {
+  localStorage.removeItem(storageKey);
+}
+
+export function saveStudentSession(session) {
+  writeSession(STUDENT_STORAGE_KEY, session);
 }
 
 export function getStudentSession() {
-  const stored = localStorage.getItem(STUDENT_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : null;
+  return readSession(STUDENT_STORAGE_KEY);
 }
 
-export function saveAdminSession(user) {
-  localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(user));
+export function clearStudentSession() {
+  clearSession(STUDENT_STORAGE_KEY);
+}
+
+export function saveAdminSession(session) {
+  writeSession(ADMIN_STORAGE_KEY, session);
 }
 
 export function getAdminSession() {
-  const stored = localStorage.getItem(ADMIN_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : null;
+  return readSession(ADMIN_STORAGE_KEY);
+}
+
+export function clearAdminSession() {
+  clearSession(ADMIN_STORAGE_KEY);
+}
+
+export function getAuthHeaders(token) {
+  return token
+    ? {
+        Authorization: `Bearer ${token}`
+      }
+    : {};
 }

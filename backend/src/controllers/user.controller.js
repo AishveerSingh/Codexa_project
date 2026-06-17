@@ -1,76 +1,256 @@
 import { pool } from "../config/db.js";
+import { hashPassword, signAuthToken, verifyPassword } from "../utils/auth.js";
 
-export async function getUsers(_req, res, next) {
-  try {
-    const result = await pool.query("SELECT * FROM users ORDER BY created_at DESC");
-    res.json(result.rows);
-  } catch (error) {
-    next(error);
-  }
+function sanitizeUser(row) {
+  return {
+    id: row.id,
+    full_name: row.full_name,
+    email: row.email,
+    role: row.role,
+    created_at: row.created_at,
+    submission_count: row.submission_count,
+    accepted_count: row.accepted_count
+  };
 }
 
-export async function createStudentLogin(req, res, next) {
-  const { fullName, email } = req.body;
+async function registerUser(req, res, next, role) {
+  const { fullName, email, password } = req.body;
 
-  if (!fullName?.trim() || !email?.trim()) {
+  if (!fullName?.trim() || !email?.trim() || !password?.trim()) {
     return res.status(400).json({
-      message: "Full name and email are required."
+      message: "Full name, email, and password are required."
+    });
+  }
+
+  if (password.trim().length < 8) {
+    return res.status(400).json({
+      message: "Password must be at least 8 characters long."
     });
   }
 
   try {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedName = fullName.trim();
+    const passwordHash = await hashPassword(password.trim());
+
+    const existingUser = await pool.query(
+      `
+        SELECT id, role, password_hash
+        FROM users
+        WHERE email = $1
+      `,
+      [normalizedEmail]
+    );
+
+    if (existingUser.rows.length > 0) {
+      const existing = existingUser.rows[0];
+
+      if (existing.role !== role) {
+        return res.status(409).json({
+          message: "This email is already registered under a different role."
+        });
+      }
+
+      if (!existing.password_hash) {
+        const upgradedUser = await pool.query(
+          `
+            UPDATE users
+            SET full_name = $1, password_hash = $2, role = $3
+            WHERE id = $4
+            RETURNING id, full_name, email, role, created_at
+          `,
+          [normalizedName, passwordHash, role, existing.id]
+        );
+
+        const user = upgradedUser.rows[0];
+        const token = signAuthToken(user);
+
+        return res.status(201).json({
+          message: `${role === "admin" ? "Admin" : "Student"} account secured successfully.`,
+          token,
+          user
+        });
+      }
+
+      return res.status(409).json({
+        message: `An ${role} account with this email already exists. Please log in instead.`
+      });
+    }
 
     const result = await pool.query(
       `
-        INSERT INTO users (full_name, email, role)
-        VALUES ($1, $2, 'student')
-        ON CONFLICT (email)
-        DO UPDATE SET full_name = EXCLUDED.full_name
+        INSERT INTO users (full_name, email, password_hash, role)
+        VALUES ($1, $2, $3, $4)
         RETURNING id, full_name, email, role, created_at
       `,
-      [normalizedName, normalizedEmail]
+      [normalizedName, normalizedEmail, passwordHash, role]
     );
 
+    const user = result.rows[0];
+    const token = signAuthToken(user);
+
     res.status(201).json({
-      message: "Student login saved successfully.",
-      user: result.rows[0]
+      message: `${role === "admin" ? "Admin" : "Student"} account created successfully.`,
+      token,
+      user
     });
   } catch (error) {
     next(error);
   }
 }
 
-export async function createAdminLogin(req, res, next) {
-  const { fullName, email } = req.body;
+async function loginUser(req, res, next, role) {
+  const { email, password } = req.body;
 
-  if (!fullName?.trim() || !email?.trim()) {
+  if (!email?.trim() || !password?.trim()) {
     return res.status(400).json({
-      message: "Full name and email are required."
+      message: "Email and password are required."
     });
   }
 
   try {
     const normalizedEmail = email.trim().toLowerCase();
-    const normalizedName = fullName.trim();
 
     const result = await pool.query(
       `
-        INSERT INTO users (full_name, email, role)
-        VALUES ($1, $2, 'admin')
-        ON CONFLICT (email)
-        DO UPDATE SET full_name = EXCLUDED.full_name, role = 'admin'
-        RETURNING id, full_name, email, role, created_at
+        SELECT id, full_name, email, password_hash, role, created_at
+        FROM users
+        WHERE email = $1 AND role = $2
       `,
-      [normalizedName, normalizedEmail]
+      [normalizedEmail, role]
     );
 
-    res.status(201).json({
-      message: "Admin login saved successfully.",
-      user: result.rows[0]
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        message: "Invalid email or password."
+      });
+    }
+
+    const userRecord = result.rows[0];
+    if (!userRecord.password_hash) {
+      return res.status(401).json({
+        message: "This account needs to be registered again with a password first."
+      });
+    }
+
+    const isValidPassword = await verifyPassword(password.trim(), userRecord.password_hash);
+
+    if (!isValidPassword) {
+      return res.status(401).json({
+        message: "Invalid email or password."
+      });
+    }
+
+    const user = sanitizeUser(userRecord);
+    const token = signAuthToken(user);
+
+    res.json({
+      message: `${role === "admin" ? "Admin" : "Student"} login successful.`,
+      token,
+      user
     });
   } catch (error) {
     next(error);
   }
+}
+
+export async function getUsers(req, res, next) {
+  const role = req.query.role?.trim().toLowerCase() ?? "";
+  const search = req.query.search?.trim() ?? "";
+
+  if (role && !["student", "instructor", "admin"].includes(role)) {
+    return res.status(400).json({
+      message: "Role filter must be student, instructor, or admin."
+    });
+  }
+
+  try {
+    const values = [];
+    const filters = [];
+
+    if (role) {
+      values.push(role);
+      filters.push(`u.role = $${values.length}`);
+    }
+
+    if (search) {
+      values.push(`%${search}%`);
+      filters.push(`(u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length})`);
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+
+    const result = await pool.query(
+      `
+        SELECT
+          u.id,
+          u.full_name,
+          u.email,
+          u.role,
+          u.created_at,
+          COUNT(s.id)::int AS submission_count,
+          COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count
+        FROM users u
+        LEFT JOIN submissions s ON s.student_id = u.id
+        ${whereClause}
+        GROUP BY u.id
+        ORDER BY u.created_at DESC
+      `,
+      values
+    );
+
+    res.json(result.rows.map(sanitizeUser));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getUserById(req, res, next) {
+  const { userId } = req.params;
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          u.id,
+          u.full_name,
+          u.email,
+          u.role,
+          u.created_at,
+          COUNT(s.id)::int AS submission_count,
+          COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count
+        FROM users u
+        LEFT JOIN submissions s ON s.student_id = u.id
+        WHERE u.id = $1
+        GROUP BY u.id
+      `,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found."
+      });
+    }
+
+    res.json(sanitizeUser(result.rows[0]));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function registerStudent(req, res, next) {
+  return registerUser(req, res, next, "student");
+}
+
+export function loginStudent(req, res, next) {
+  return loginUser(req, res, next, "student");
+}
+
+export function registerAdmin(req, res, next) {
+  return registerUser(req, res, next, "admin");
+}
+
+export function loginAdmin(req, res, next) {
+  return loginUser(req, res, next, "admin");
 }

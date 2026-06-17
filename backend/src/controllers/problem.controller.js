@@ -1,20 +1,138 @@
 import { pool } from "../config/db.js";
+import { logAdminAction } from "../utils/adminLog.js";
 
-export async function getProblems(_req, res, next) {
+function normalizeTags(rawTags) {
+  if (!Array.isArray(rawTags)) {
+    return [];
+  }
+
+  return [...new Set(rawTags.map((tag) => tag?.trim().toLowerCase()).filter(Boolean))];
+}
+
+function normalizeSampleTestCases(rawCases) {
+  if (!Array.isArray(rawCases)) {
+    return [];
+  }
+
+  return rawCases
+    .map((entry, index) => ({
+      input_data: entry?.input_data?.trim() ?? "",
+      expected_output: entry?.expected_output?.trim() ?? "",
+      sort_order: typeof entry?.sort_order === "number" ? entry.sort_order : index
+    }))
+    .filter((entry) => entry.input_data && entry.expected_output);
+}
+
+async function replaceProblemTags(client, problemId, tags) {
+  await client.query("DELETE FROM problem_tags WHERE problem_id = $1", [problemId]);
+
+  for (const tag of tags) {
+    await client.query(
+      `
+        INSERT INTO problem_tags (problem_id, tag_name)
+        VALUES ($1, $2)
+      `,
+      [problemId, tag]
+    );
+  }
+}
+
+async function replaceSampleTestCases(client, problemId, sampleTestCases) {
+  await client.query("DELETE FROM test_cases WHERE problem_id = $1 AND is_sample = TRUE", [problemId]);
+
+  for (const testCase of sampleTestCases) {
+    await client.query(
+      `
+        INSERT INTO test_cases (problem_id, input_data, expected_output, is_sample, sort_order)
+        VALUES ($1, $2, $3, TRUE, $4)
+      `,
+      [problemId, testCase.input_data, testCase.expected_output, testCase.sort_order]
+    );
+  }
+}
+
+async function fetchProblemMetadata(client, problemId) {
+  const [tagResult, sampleResult] = await Promise.all([
+    client.query(
+      `
+        SELECT tag_name
+        FROM problem_tags
+        WHERE problem_id = $1
+        ORDER BY tag_name ASC
+      `,
+      [problemId]
+    ),
+    client.query(
+      `
+        SELECT id, input_data, expected_output, sort_order
+        FROM test_cases
+        WHERE problem_id = $1 AND is_sample = TRUE
+        ORDER BY sort_order ASC, created_at ASC
+      `,
+      [problemId]
+    )
+  ]);
+
+  return {
+    tags: tagResult.rows.map((row) => row.tag_name),
+    sample_test_cases: sampleResult.rows
+  };
+}
+
+export async function getProblems(req, res, next) {
+  const search = req.query.q?.trim() ?? "";
+  const difficulty = req.query.difficulty?.trim().toLowerCase() ?? "";
+
+  if (difficulty && !["easy", "medium", "hard"].includes(difficulty)) {
+    return res.status(400).json({
+      message: "Difficulty filter must be easy, medium, or hard."
+    });
+  }
+
   try {
+    const values = [];
+    const filters = [];
+
+    if (search) {
+      values.push(`%${search}%`);
+      filters.push(`(p.title ILIKE $${values.length} OR p.statement ILIKE $${values.length})`);
+    }
+
+    if (difficulty) {
+      values.push(difficulty);
+      filters.push(`p.difficulty = $${values.length}`);
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
     const result = await pool.query(
       `
-        SELECT id, title, difficulty, statement, created_at
-        FROM problems
+        SELECT
+          p.id,
+          p.title,
+          p.difficulty,
+          p.statement,
+          p.input_format,
+          p.output_format,
+          p.constraints_text,
+          p.examples_text,
+          p.created_at,
+          COALESCE(ARRAY_REMOVE(ARRAY_AGG(DISTINCT pt.tag_name), NULL), '{}') AS tags,
+          COUNT(tc.id) FILTER (WHERE tc.is_sample = TRUE)::int AS sample_test_case_count
+        FROM problems p
+        LEFT JOIN problem_tags pt ON pt.problem_id = p.id
+        LEFT JOIN test_cases tc ON tc.problem_id = p.id
+        ${whereClause}
+        GROUP BY p.id
         ORDER BY
-          CASE difficulty
+          CASE p.difficulty
             WHEN 'easy' THEN 1
             WHEN 'medium' THEN 2
             WHEN 'hard' THEN 3
             ELSE 4
           END,
-          created_at DESC
-      `
+          p.created_at DESC
+      `,
+      values
     );
 
     res.json(result.rows);
@@ -29,7 +147,7 @@ export async function getProblemById(req, res, next) {
   try {
     const result = await pool.query(
       `
-        SELECT id, title, difficulty, statement, created_at
+        SELECT id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, created_at
         FROM problems
         WHERE id = $1
       `,
@@ -42,14 +160,28 @@ export async function getProblemById(req, res, next) {
       });
     }
 
-    res.json(result.rows[0]);
+    const metadata = await fetchProblemMetadata(pool, problemId);
+    res.json({
+      ...result.rows[0],
+      ...metadata
+    });
   } catch (error) {
     next(error);
   }
 }
 
 export async function createProblem(req, res, next) {
-  const { title, difficulty, statement } = req.body;
+  const {
+    title,
+    difficulty,
+    statement,
+    inputFormat = "",
+    outputFormat = "",
+    constraintsText = "",
+    examplesText = "",
+    tags = [],
+    sampleTestCases = []
+  } = req.body;
 
   if (!title?.trim() || !difficulty?.trim() || !statement?.trim()) {
     return res.status(400).json({
@@ -63,28 +195,87 @@ export async function createProblem(req, res, next) {
     });
   }
 
+  const normalizedTags = normalizeTags(tags);
+  const normalizedSampleTestCases = normalizeSampleTestCases(sampleTestCases);
+  const client = await pool.connect();
+
   try {
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `
-        INSERT INTO problems (title, difficulty, statement)
-        VALUES ($1, $2, $3)
-        RETURNING id, title, difficulty, statement, created_at
+        INSERT INTO problems (
+          title,
+          difficulty,
+          statement,
+          input_format,
+          output_format,
+          constraints_text,
+          examples_text
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, created_at
       `,
-      [title.trim(), difficulty.trim().toLowerCase(), statement.trim()]
+      [
+        title.trim(),
+        difficulty.trim().toLowerCase(),
+        statement.trim(),
+        inputFormat.trim() || null,
+        outputFormat.trim() || null,
+        constraintsText.trim() || null,
+        examplesText.trim() || null
+      ]
     );
 
+    const problem = result.rows[0];
+
+    await replaceProblemTags(client, problem.id, normalizedTags);
+    await replaceSampleTestCases(client, problem.id, normalizedSampleTestCases);
+
+    await logAdminAction({
+      db: client,
+      adminId: req.auth?.userId,
+      actionType: "problem_created",
+      targetType: "problem",
+      targetId: problem.id,
+      details: {
+        title: problem.title,
+        tag_count: normalizedTags.length,
+        sample_test_case_count: normalizedSampleTestCases.length
+      }
+    });
+
+    await client.query("COMMIT");
+
+    const metadata = await fetchProblemMetadata(pool, problem.id);
     res.status(201).json({
       message: "Coding question added successfully.",
-      problem: result.rows[0]
+      problem: {
+        ...problem,
+        ...metadata
+      }
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     next(error);
+  } finally {
+    client.release();
   }
 }
 
 export async function updateProblem(req, res, next) {
   const { problemId } = req.params;
-  const { title, difficulty, statement } = req.body;
+  const {
+    title,
+    difficulty,
+    statement,
+    inputFormat = "",
+    outputFormat = "",
+    constraintsText = "",
+    examplesText = "",
+    tags = [],
+    sampleTestCases = []
+  } = req.body;
 
   if (!title?.trim() || !difficulty?.trim() || !statement?.trim()) {
     return res.status(400).json({
@@ -98,29 +289,78 @@ export async function updateProblem(req, res, next) {
     });
   }
 
+  const normalizedTags = normalizeTags(tags);
+  const normalizedSampleTestCases = normalizeSampleTestCases(sampleTestCases);
+  const client = await pool.connect();
+
   try {
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `
         UPDATE problems
-        SET title = $1, difficulty = $2, statement = $3
-        WHERE id = $4
-        RETURNING id, title, difficulty, statement, created_at
+        SET
+          title = $1,
+          difficulty = $2,
+          statement = $3,
+          input_format = $4,
+          output_format = $5,
+          constraints_text = $6,
+          examples_text = $7
+        WHERE id = $8
+        RETURNING id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, created_at
       `,
-      [title.trim(), difficulty.trim().toLowerCase(), statement.trim(), problemId]
+      [
+        title.trim(),
+        difficulty.trim().toLowerCase(),
+        statement.trim(),
+        inputFormat.trim() || null,
+        outputFormat.trim() || null,
+        constraintsText.trim() || null,
+        examplesText.trim() || null,
+        problemId
+      ]
     );
 
     if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({
         message: "Coding question not found."
       });
     }
 
+    const problem = result.rows[0];
+    await replaceProblemTags(client, problemId, normalizedTags);
+    await replaceSampleTestCases(client, problemId, normalizedSampleTestCases);
+
+    await logAdminAction({
+      db: client,
+      adminId: req.auth?.userId,
+      actionType: "problem_updated",
+      targetType: "problem",
+      targetId: problemId,
+      details: {
+        title: problem.title,
+        tag_count: normalizedTags.length,
+        sample_test_case_count: normalizedSampleTestCases.length
+      }
+    });
+
+    await client.query("COMMIT");
+
+    const metadata = await fetchProblemMetadata(pool, problemId);
     res.json({
       message: "Coding question updated successfully.",
-      problem: result.rows[0]
+      problem: {
+        ...problem,
+        ...metadata
+      }
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     next(error);
+  } finally {
+    client.release();
   }
 }
 
@@ -132,7 +372,7 @@ export async function deleteProblem(req, res, next) {
       `
         DELETE FROM problems
         WHERE id = $1
-        RETURNING id
+        RETURNING id, title
       `,
       [problemId]
     );
@@ -142,6 +382,16 @@ export async function deleteProblem(req, res, next) {
         message: "Coding question not found."
       });
     }
+
+    await logAdminAction({
+      adminId: req.auth?.userId,
+      actionType: "problem_deleted",
+      targetType: "problem",
+      targetId: result.rows[0].id,
+      details: {
+        title: result.rows[0].title
+      }
+    });
 
     res.json({
       message: "Coding question deleted successfully."

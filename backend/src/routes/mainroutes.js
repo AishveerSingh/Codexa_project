@@ -1,4 +1,5 @@
 import { Router } from "express";
+import adminRouter from "./admin.routes.js";
 import healthRouter from "./health.routes.js";
 import problemRouter from "./problem.routes.js";
 import submissionRouter from "./submission.routes.js";
@@ -6,6 +7,7 @@ import userRouter from "./user.routes.js";
 const mainRouter = Router();
 
 // Register all API route groups here.
+mainRouter.use("/admin", adminRouter);
 mainRouter.use("/health", healthRouter);
 mainRouter.use("/problems", problemRouter);
 mainRouter.use("/submissions", submissionRouter);

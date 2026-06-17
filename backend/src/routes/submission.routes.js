@@ -1,14 +1,31 @@
 import { Router } from "express";
 import {
   createSubmission,
+  getAdminSubmissions,
   getStudentProgress,
   getStudentSubmissions
 } from "../controllers/submission.controller.js";
+import {
+  requireAuth,
+  requireRole,
+  requireStudentMatchOrAdmin
+} from "../middleware/auth.middleware.js";
 
 const submissionRouter = Router();
 
-submissionRouter.post("/", createSubmission);
-submissionRouter.get("/student/:studentId", getStudentSubmissions);
-submissionRouter.get("/student/:studentId/progress", getStudentProgress);
+submissionRouter.post("/", requireAuth, createSubmission);
+submissionRouter.get("/", requireAuth, requireRole("admin"), getAdminSubmissions);
+submissionRouter.get(
+  "/student/:studentId",
+  requireAuth,
+  requireStudentMatchOrAdmin,
+  getStudentSubmissions
+);
+submissionRouter.get(
+  "/student/:studentId/progress",
+  requireAuth,
+  requireStudentMatchOrAdmin,
+  getStudentProgress
+);
 
 export default submissionRouter;

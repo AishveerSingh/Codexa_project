@@ -625,6 +625,38 @@ a {
   width: 100%;
 }
 
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.5rem;
+}
+
+.filter-input,
+.filter-select {
+  min-height: 50px;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #f8fafc;
+  outline: none;
+}
+
+.filter-input {
+  flex: 1 1 280px;
+}
+
+.filter-select {
+  flex: 0 1 220px;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+}
+
 .question-panel-header {
   display: flex;
   justify-content: space-between;
@@ -757,6 +789,19 @@ a {
   margin-top: 1.25rem;
 }
 
+.stats-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  color: #dbe4f0;
+  font-size: 0.92rem;
+}
+
+.inline-link-button {
+  justify-content: center;
+}
+
 .history-snippet {
   margin-top: 0.75rem;
   color: #cbd5e1;
@@ -845,6 +890,11 @@ a {
   grid-template-columns: 1.3fr 0.9fr;
   gap: 1rem;
   margin-top: 1.75rem;
+}
+
+.detail-grid-tight {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0;
 }
 
 .student-workspace-grid {
@@ -1040,6 +1090,39 @@ a {
   margin-top: 0.55rem;
 }
 
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.tag-pill {
+  display: inline-flex;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.14);
+  color: #bae6fd;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.sample-case-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.sample-case-card {
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.sample-case-card strong + .history-snippet {
+  margin-top: 0.5rem;
+}
+
 .detail-link {
   display: inline-flex;
   margin-top: 0;
@@ -1116,5 +1199,9 @@ a {
 
   .list-header {
     flex-direction: column;
+  }
+
+  .filter-select {
+    flex-basis: 100%;
   }
 }

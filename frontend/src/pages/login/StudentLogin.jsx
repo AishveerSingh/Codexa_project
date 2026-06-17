@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveStudentSession } from "../../utils/session";
 
+const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const initialForm = {
   fullName: "",
-  email: ""
+  email: "",
+  password: ""
 };
-
-const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function StudentLogin() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState("login");
   const [form, setForm] = useState(initialForm);
   const [status, setStatus] = useState({
     type: "",
@@ -35,31 +36,45 @@ export default function StudentLogin() {
       message: ""
     });
 
+    const endpoint = mode === "register" ? "/users/student-register" : "/users/student-login";
+    const payload =
+      mode === "register"
+        ? form
+        : {
+            email: form.email,
+            password: form.password
+          };
+
     try {
-      const response = await fetch(`${apiBaseUrl}/users/student-login`, {
+      const response = await fetch(`${apiBaseUrl}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to save student login.");
+        throw new Error(data.message || "Unable to authenticate student.");
       }
 
+      const session = {
+        token: data.token,
+        user: data.user
+      };
+
+      saveStudentSession(session);
       setForm(initialForm);
       setStatus({
         type: "success",
         message: data.message
       });
-      saveStudentSession(data.user);
 
       navigate("/student/dashboard", {
         state: {
-          user: data.user
+          session
         }
       });
     } catch (error) {
@@ -79,29 +94,50 @@ export default function StudentLogin() {
           <p className="auth-kicker">Student Access</p>
           <h1>Start solving, shipping, and learning.</h1>
           <p className="auth-copy">
-            Enter your name and email to create a student record directly in PostgreSQL.
+            Register a student account with a password or log in with your existing credentials.
           </p>
         </div>
 
         <div className="auth-badge-row">
           <span className="auth-badge">Practice tracks</span>
-          <span className="auth-badge">Weekly contests</span>
-          <span className="auth-badge">Progress snapshots</span>
+          <span className="auth-badge">Password auth</span>
+          <span className="auth-badge">JWT session</span>
+        </div>
+
+        <div className="panel-action-row">
+          <button
+            className={`auth-button ${mode === "login" ? "student-button" : "ghost-button"} panel-action-button`}
+            type="button"
+            onClick={() => setMode("login")}
+          >
+            Log in
+          </button>
+          <button
+            className={`auth-button ${mode === "register" ? "student-button" : "ghost-button"} panel-action-button`}
+            type="button"
+            onClick={() => setMode("register")}
+          >
+            Register
+          </button>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="form-field" htmlFor="fullName">
-            Full name
-          </label>
-          <input
-            id="fullName"
-            name="fullName"
-            type="text"
-            placeholder="Enter your full name"
-            value={form.fullName}
-            onChange={handleChange}
-            required
-          />
+          {mode === "register" ? (
+            <>
+              <label className="form-field" htmlFor="fullName">
+                Full name
+              </label>
+              <input
+                id="fullName"
+                name="fullName"
+                type="text"
+                placeholder="Enter your full name"
+                value={form.fullName}
+                onChange={handleChange}
+                required
+              />
+            </>
+          ) : null}
 
           <label className="form-field" htmlFor="email">
             Email
@@ -116,22 +152,38 @@ export default function StudentLogin() {
             required
           />
 
+          <label className="form-field" htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="Enter your password"
+            value={form.password}
+            onChange={handleChange}
+            minLength={8}
+            required
+          />
+
           <button className="auth-button student-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Enter student dashboard"}
+            {isSubmitting
+              ? "Saving..."
+              : mode === "register"
+                ? "Create student account"
+                : "Enter student dashboard"}
           </button>
         </form>
 
-        {status.message ? (
-          <p className={`form-status ${status.type}`}>{status.message}</p>
-        ) : null}
+        {status.message ? <p className={`form-status ${status.type}`}>{status.message}</p> : null}
       </section>
 
       <aside className="auth-side student-side">
         <p className="auth-side-label">Student space</p>
         <h2>Build consistency before complexity.</h2>
         <p className="login-copy">
-          Track your sessions, keep your practice identity in the database, and move into the
-          dashboard with your saved profile.
+          Sign in securely, keep your student identity in the database, and move into the
+          dashboard with a JWT-backed session.
         </p>
       </aside>
     </main>

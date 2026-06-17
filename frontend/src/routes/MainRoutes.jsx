@@ -7,6 +7,8 @@ import StudentLogin from "../pages/login/StudentLogin";
 import AdminProblemList from "../pages/problems/AdminProblemList";
 import AdminProblemCreate from "../pages/problems/AdminProblemCreate";
 import AdminProblemDetails from "../pages/problems/AdminProblemDetails";
+import AdminStudentList from "../pages/admin/AdminStudentList";
+import AdminStudentSubmissions from "../pages/admin/AdminStudentSubmissions";
 import StudentProblemList from "../pages/problems/StudentProblemList";
 import StudentProblemDetails from "../pages/problems/StudentProblemDetails";
 
@@ -35,6 +37,8 @@ export default function MainRoutes() {
       <Route path="/admin/problems/new" element={<AdminProblemCreate />} />
       <Route path="/admin/problems" element={<AdminProblemList />} />
       <Route path="/admin/problems/:problemId" element={<AdminProblemDetails />} />
+      <Route path="/admin/students" element={<AdminStudentList />} />
+      <Route path="/admin/students/:studentId/submissions" element={<AdminStudentSubmissions />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

@@ -1,11 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { getAdminSession, getAuthHeaders } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+function buildForm(problem) {
+  return {
+    title: problem.title,
+    difficulty: problem.difficulty,
+    statement: problem.statement,
+    inputFormat: problem.input_format || "",
+    outputFormat: problem.output_format || "",
+    constraintsText: problem.constraints_text || "",
+    examplesText: problem.examples_text || "",
+    tagsText: (problem.tags || []).join(", "),
+    sampleInput: problem.sample_test_cases?.[0]?.input_data || "",
+    sampleOutput: problem.sample_test_cases?.[0]?.expected_output || ""
+  };
+}
 
 export default function AdminProblemDetails() {
   const navigate = useNavigate();
   const { problemId } = useParams();
+  const session = getAdminSession();
   const [problem, setProblem] = useState(null);
   const [status, setStatus] = useState({
     loading: true,
@@ -14,7 +31,14 @@ export default function AdminProblemDetails() {
   const [form, setForm] = useState({
     title: "",
     difficulty: "easy",
-    statement: ""
+    statement: "",
+    inputFormat: "",
+    outputFormat: "",
+    constraintsText: "",
+    examplesText: "",
+    tagsText: "",
+    sampleInput: "",
+    sampleOutput: ""
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -35,11 +59,7 @@ export default function AdminProblemDetails() {
 
         if (isMounted) {
           setProblem(data);
-          setForm({
-            title: data.title,
-            difficulty: data.difficulty,
-            statement: data.statement
-          });
+          setForm(buildForm(data));
           setStatus({
             loading: false,
             error: ""
@@ -80,13 +100,33 @@ export default function AdminProblemDetails() {
       error: ""
     }));
 
+    const tags = form.tagsText
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    const sampleTestCases =
+      form.sampleInput.trim() && form.sampleOutput.trim()
+        ? [{ input_data: form.sampleInput, expected_output: form.sampleOutput, sort_order: 0 }]
+        : [];
+
     try {
       const response = await fetch(`${apiBaseUrl}/problems/${problemId}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...getAuthHeaders(session?.token)
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          title: form.title,
+          difficulty: form.difficulty,
+          statement: form.statement,
+          inputFormat: form.inputFormat,
+          outputFormat: form.outputFormat,
+          constraintsText: form.constraintsText,
+          examplesText: form.examplesText,
+          tags,
+          sampleTestCases
+        })
       });
 
       const data = await response.json();
@@ -96,11 +136,7 @@ export default function AdminProblemDetails() {
       }
 
       setProblem(data.problem);
-      setForm({
-        title: data.problem.title,
-        difficulty: data.problem.difficulty,
-        statement: data.problem.statement
-      });
+      setForm(buildForm(data.problem));
       setIsEditing(false);
       setActionMessage(data.message);
     } catch (error) {
@@ -129,7 +165,10 @@ export default function AdminProblemDetails() {
 
     try {
       const response = await fetch(`${apiBaseUrl}/problems/${problemId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: {
+          ...getAuthHeaders(session?.token)
+        }
       });
 
       const data = await response.json();
@@ -155,6 +194,7 @@ export default function AdminProblemDetails() {
         <p className="auth-kicker">Admin Question View</p>
         {status.loading ? <h1>Loading question...</h1> : null}
         {status.error ? <p className="form-status error">{status.error}</p> : null}
+        {!session?.token ? <p className="form-status error">Log in as an admin to edit questions.</p> : null}
 
         {problem ? (
           <>
@@ -177,15 +217,55 @@ export default function AdminProblemDetails() {
                   <article className="detail-block">
                     <h2>Problem Statement</h2>
                     <p>{problem.statement}</p>
+                    <div className="pill-row">
+                      {(problem.tags || []).map((tag) => (
+                        <span className="tag-pill" key={tag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </article>
 
                   <article className="detail-block">
-                    <h2>Admin Notes</h2>
-                    <ul className="detail-list">
-                      <li>Difficulty is currently set to {problem.difficulty}.</li>
-                      <li>Use concise, unambiguous prompts for better submissions.</li>
-                      <li>Open the dashboard again to add more questions.</li>
-                    </ul>
+                    <h2>Sample Test Cases</h2>
+                    {problem.sample_test_cases?.length ? (
+                      <div className="sample-case-list">
+                        {problem.sample_test_cases.map((testCase, index) => (
+                          <article className="sample-case-card" key={testCase.id || index}>
+                            <strong>Sample {index + 1}</strong>
+                            <p className="history-snippet">{testCase.input_data}</p>
+                            <strong>Expected output</strong>
+                            <p className="history-snippet">{testCase.expected_output}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No sample test cases added yet.</p>
+                    )}
+                  </article>
+                </div>
+
+                <div className="detail-grid">
+                  <article className="detail-block">
+                    <h2>Input format</h2>
+                    <p>{problem.input_format || "Not provided yet."}</p>
+                  </article>
+
+                  <article className="detail-block">
+                    <h2>Output format</h2>
+                    <p>{problem.output_format || "Not provided yet."}</p>
+                  </article>
+                </div>
+
+                <div className="detail-grid">
+                  <article className="detail-block">
+                    <h2>Constraints</h2>
+                    <p>{problem.constraints_text || "Not provided yet."}</p>
+                  </article>
+
+                  <article className="detail-block">
+                    <h2>Examples</h2>
+                    <p>{problem.examples_text || "Not provided yet."}</p>
                   </article>
                 </div>
               </>
@@ -194,40 +274,92 @@ export default function AdminProblemDetails() {
                 <label className="form-field" htmlFor="title">
                   Question title
                 </label>
-                <input
-                  id="title"
-                  name="title"
-                  type="text"
-                  value={form.title}
-                  onChange={handleChange}
-                  required
-                />
+                <input id="title" name="title" type="text" value={form.title} onChange={handleChange} required />
 
                 <label className="form-field" htmlFor="difficulty">
                   Difficulty
                 </label>
-                <select
-                  id="difficulty"
-                  name="difficulty"
-                  value={form.difficulty}
-                  onChange={handleChange}
-                >
+                <select id="difficulty" name="difficulty" value={form.difficulty} onChange={handleChange}>
                   <option value="easy">Easy</option>
                   <option value="medium">Medium</option>
                   <option value="hard">Hard</option>
                 </select>
 
+                <label className="form-field" htmlFor="tagsText">
+                  Tags
+                </label>
+                <input
+                  id="tagsText"
+                  name="tagsText"
+                  type="text"
+                  value={form.tagsText}
+                  onChange={handleChange}
+                  placeholder="array, strings, sorting"
+                />
+
                 <label className="form-field" htmlFor="statement">
                   Problem statement
                 </label>
+                <textarea id="statement" name="statement" rows="7" value={form.statement} onChange={handleChange} required />
+
+                <label className="form-field" htmlFor="inputFormat">
+                  Input format
+                </label>
+                <textarea id="inputFormat" name="inputFormat" rows="4" value={form.inputFormat} onChange={handleChange} />
+
+                <label className="form-field" htmlFor="outputFormat">
+                  Output format
+                </label>
+                <textarea id="outputFormat" name="outputFormat" rows="4" value={form.outputFormat} onChange={handleChange} />
+
+                <label className="form-field" htmlFor="constraintsText">
+                  Constraints
+                </label>
                 <textarea
-                  id="statement"
-                  name="statement"
-                  rows="7"
-                  value={form.statement}
+                  id="constraintsText"
+                  name="constraintsText"
+                  rows="4"
+                  value={form.constraintsText}
                   onChange={handleChange}
-                  required
                 />
+
+                <label className="form-field" htmlFor="examplesText">
+                  Examples
+                </label>
+                <textarea
+                  id="examplesText"
+                  name="examplesText"
+                  rows="5"
+                  value={form.examplesText}
+                  onChange={handleChange}
+                />
+
+                <div className="detail-grid detail-grid-tight">
+                  <div>
+                    <label className="form-field" htmlFor="sampleInput">
+                      Sample input
+                    </label>
+                    <textarea
+                      id="sampleInput"
+                      name="sampleInput"
+                      rows="5"
+                      value={form.sampleInput}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-field" htmlFor="sampleOutput">
+                      Sample output
+                    </label>
+                    <textarea
+                      id="sampleOutput"
+                      name="sampleOutput"
+                      rows="5"
+                      value={form.sampleOutput}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
 
                 <div className="detail-actions">
                   <button className="auth-button admin-button detail-link" type="submit" disabled={isSaving}>
@@ -238,11 +370,7 @@ export default function AdminProblemDetails() {
                     type="button"
                     onClick={() => {
                       setIsEditing(false);
-                      setForm({
-                        title: problem.title,
-                        difficulty: problem.difficulty,
-                        statement: problem.statement
-                      });
+                      setForm(buildForm(problem));
                     }}
                   >
                     Cancel
@@ -262,6 +390,7 @@ export default function AdminProblemDetails() {
                 className="auth-button admin-button detail-link"
                 type="button"
                 onClick={() => setIsEditing(true)}
+                disabled={!session?.token}
               >
                 Edit question
               </button>
@@ -269,7 +398,7 @@ export default function AdminProblemDetails() {
                 className="auth-button danger-button detail-link"
                 type="button"
                 onClick={handleDelete}
-                disabled={isDeleting}
+                disabled={isDeleting || !session?.token}
               >
                 {isDeleting ? "Deleting..." : "Delete question"}
               </button>

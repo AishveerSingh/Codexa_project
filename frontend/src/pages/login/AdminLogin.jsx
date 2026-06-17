@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveAdminSession } from "../../utils/session";
 
+const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const initialForm = {
   fullName: "",
-  email: ""
+  email: "",
+  password: ""
 };
-
-const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState("login");
   const [form, setForm] = useState(initialForm);
   const [status, setStatus] = useState({
     type: "",
@@ -35,31 +36,45 @@ export default function AdminLogin() {
       message: ""
     });
 
+    const endpoint = mode === "register" ? "/users/admin-register" : "/users/admin-login";
+    const payload =
+      mode === "register"
+        ? form
+        : {
+            email: form.email,
+            password: form.password
+          };
+
     try {
-      const response = await fetch(`${apiBaseUrl}/users/admin-login`, {
+      const response = await fetch(`${apiBaseUrl}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to save admin login.");
+        throw new Error(data.message || "Unable to authenticate admin.");
       }
 
+      const session = {
+        token: data.token,
+        user: data.user
+      };
+
+      saveAdminSession(session);
       setForm(initialForm);
       setStatus({
         type: "success",
         message: data.message
       });
-      saveAdminSession(data.user);
 
       navigate("/admin/dashboard", {
         state: {
-          user: data.user
+          session
         }
       });
     } catch (error) {
@@ -78,8 +93,8 @@ export default function AdminLogin() {
         <p className="auth-side-label">Control room</p>
         <h2>Review the platform from the operations seat.</h2>
         <p className="login-copy">
-          Admin access stores a distinct record in PostgreSQL so your management flow stays
-          separate from the student experience.
+          Use real password authentication for admin access, then continue into the protected
+          dashboard.
         </p>
       </aside>
 
@@ -88,29 +103,50 @@ export default function AdminLogin() {
           <p className="auth-kicker">Admin Access</p>
           <h1>Configure, review, and steer the platform.</h1>
           <p className="auth-copy">
-            Save an admin login directly to PostgreSQL and continue to the admin dashboard.
+            Register a protected admin account or log in with your existing credentials.
           </p>
         </div>
 
         <div className="auth-badge-row">
           <span className="auth-badge">Role oversight</span>
-          <span className="auth-badge">User review</span>
-          <span className="auth-badge">Platform control</span>
+          <span className="auth-badge">Password auth</span>
+          <span className="auth-badge">JWT session</span>
+        </div>
+
+        <div className="panel-action-row">
+          <button
+            className={`auth-button ${mode === "login" ? "admin-button" : "ghost-button"} panel-action-button`}
+            type="button"
+            onClick={() => setMode("login")}
+          >
+            Log in
+          </button>
+          <button
+            className={`auth-button ${mode === "register" ? "admin-button" : "ghost-button"} panel-action-button`}
+            type="button"
+            onClick={() => setMode("register")}
+          >
+            Register
+          </button>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="form-field" htmlFor="fullName">
-            Full name
-          </label>
-          <input
-            id="fullName"
-            name="fullName"
-            type="text"
-            placeholder="Enter your full name"
-            value={form.fullName}
-            onChange={handleChange}
-            required
-          />
+          {mode === "register" ? (
+            <>
+              <label className="form-field" htmlFor="fullName">
+                Full name
+              </label>
+              <input
+                id="fullName"
+                name="fullName"
+                type="text"
+                placeholder="Enter your full name"
+                value={form.fullName}
+                onChange={handleChange}
+                required
+              />
+            </>
+          ) : null}
 
           <label className="form-field" htmlFor="email">
             Email
@@ -125,14 +161,30 @@ export default function AdminLogin() {
             required
           />
 
+          <label className="form-field" htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="Enter your password"
+            value={form.password}
+            onChange={handleChange}
+            minLength={8}
+            required
+          />
+
           <button className="auth-button admin-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Enter admin dashboard"}
+            {isSubmitting
+              ? "Saving..."
+              : mode === "register"
+                ? "Create admin account"
+                : "Enter admin dashboard"}
           </button>
         </form>
 
-        {status.message ? (
-          <p className={`form-status ${status.type}`}>{status.message}</p>
-        ) : null}
+        {status.message ? <p className={`form-status ${status.type}`}>{status.message}</p> : null}
       </section>
     </main>
   );

@@ -1,6 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getStudentSession } from "../../utils/session";
+import { Link, useLocation } from "react-router-dom";
+import { getAuthHeaders, getStudentSession } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const defaultProgress = [
@@ -9,27 +9,31 @@ const defaultProgress = [
     total_submissions: 0,
     accepted_submissions: 0,
     wrong_answer_submissions: 0,
-    time_limit_submissions: 0
+    time_limit_submissions: 0,
+    solved_problems: 0
   },
   {
     difficulty: "medium",
     total_submissions: 0,
     accepted_submissions: 0,
     wrong_answer_submissions: 0,
-    time_limit_submissions: 0
+    time_limit_submissions: 0,
+    solved_problems: 0
   },
   {
     difficulty: "hard",
     total_submissions: 0,
     accepted_submissions: 0,
     wrong_answer_submissions: 0,
-    time_limit_submissions: 0
+    time_limit_submissions: 0,
+    solved_problems: 0
   }
 ];
 
 export default function StudentDashboard() {
   const location = useLocation();
-  const user = location.state?.user || getStudentSession();
+  const session = location.state?.session || getStudentSession();
+  const user = session?.user;
   const [progress, setProgress] = useState(defaultProgress);
   const [progressStatus, setProgressStatus] = useState({
     loading: Boolean(user?.id),
@@ -48,17 +52,21 @@ export default function StudentDashboard() {
     let isMounted = true;
 
     async function loadProgress() {
-      if (!user?.id) {
+      if (!user?.id || !session?.token) {
         setProgress(defaultProgress);
         setProgressStatus({
           loading: false,
-          error: ""
+          error: user?.id ? "Log in again to view protected progress data." : ""
         });
         return;
       }
 
       try {
-        const response = await fetch(`${apiBaseUrl}/submissions/student/${user.id}/progress`);
+        const response = await fetch(`${apiBaseUrl}/submissions/student/${user.id}/progress`, {
+          headers: {
+            ...getAuthHeaders(session.token)
+          }
+        });
         const data = await response.json();
 
         if (!response.ok) {
@@ -88,7 +96,7 @@ export default function StudentDashboard() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [session?.token, user?.id]);
 
   return (
     <main className="dashboard-page student-dashboard-page">
@@ -96,9 +104,7 @@ export default function StudentDashboard() {
         <p className="auth-kicker">Student Dashboard</p>
         <h1>{user ? `Welcome, ${user.full_name}.` : "Student dashboard is ready."}</h1>
         <p className="dashboard-copy">
-          {user
-            ? `Your login record has been saved for ${user.email}.`
-            : "Open the student login page to create or update a student record."}
+          {user ? `Authenticated as ${user.email}.` : "Open the student login page to register or sign in."}
         </p>
 
         <div className="dashboard-stats">
@@ -111,8 +117,8 @@ export default function StudentDashboard() {
             <strong>Practice</strong>
           </article>
           <article>
-            <span>Focus</span>
-            <strong>Problem solving</strong>
+            <span>Solved</span>
+            <strong>{progress.reduce((sum, entry) => sum + (entry.solved_problems || 0), 0)}</strong>
           </article>
         </div>
 
@@ -160,6 +166,7 @@ export default function StudentDashboard() {
                   <span className="progress-percent">{getProgressPercent(entry)}% success</span>
                   <strong>{entry.accepted_submissions} accepted</strong>
                   <p>{entry.total_submissions} submissions total</p>
+                  <p>{entry.solved_problems} solved problems</p>
                   <p>{entry.wrong_answer_submissions} wrong answer</p>
                   <p>{entry.time_limit_submissions} time limit</p>
                 </article>

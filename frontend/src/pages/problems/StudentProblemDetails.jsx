@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getStudentSession } from "../../utils/session";
+import { getAuthHeaders, getStudentSession } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const initialEditor = {
@@ -10,7 +10,8 @@ const initialEditor = {
 
 export default function StudentProblemDetails() {
   const { problemId } = useParams();
-  const student = getStudentSession();
+  const session = getStudentSession();
+  const student = session?.user;
   const [problem, setProblem] = useState(null);
   const [status, setStatus] = useState({
     loading: true,
@@ -95,13 +96,22 @@ export default function StudentProblemDetails() {
     let isMounted = true;
 
     async function loadSubmissionHistory() {
-      if (!student?.id) {
+      if (!student?.id || !session?.token) {
+        setHistoryStatus({
+          loading: false,
+          error: student?.id ? "Log in again to view submission history." : ""
+        });
         return;
       }
 
       try {
         const response = await fetch(
-          `${apiBaseUrl}/submissions/student/${student.id}?problemId=${problemId}`
+          `${apiBaseUrl}/submissions/student/${student.id}?problemId=${problemId}`,
+          {
+            headers: {
+              ...getAuthHeaders(session.token)
+            }
+          }
         );
         const data = await response.json();
 
@@ -131,7 +141,7 @@ export default function StudentProblemDetails() {
     return () => {
       isMounted = false;
     };
-  }, [problemId, student?.id]);
+  }, [problemId, session?.token, student?.id]);
 
   function handleEditorChange(event) {
     const { name, value } = event.target;
@@ -145,7 +155,7 @@ export default function StudentProblemDetails() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!student?.id) {
+    if (!student?.id || !session?.token) {
       setSubmissionMessage("Student session not found. Please log in again.");
       return;
     }
@@ -157,7 +167,8 @@ export default function StudentProblemDetails() {
       const response = await fetch(`${apiBaseUrl}/submissions`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...getAuthHeaders(session.token)
         },
         body: JSON.stringify({
           studentId: student.id,
@@ -244,17 +255,53 @@ export default function StudentProblemDetails() {
               <div className="workspace-meta-row">
                 <span className={`difficulty-pill ${problem.difficulty}`}>{problem.difficulty}</span>
               </div>
+              <div className="pill-row">
+                {(problem.tags || []).map((tag) => (
+                  <span className="tag-pill" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
               <div className="workspace-subsection">
                 <p>{problem.statement}</p>
               </div>
 
               <div className="workspace-subsection">
-                <h3>Student Focus</h3>
-                <ul className="detail-list">
-                  <li>Understand the input and output clearly.</li>
-                  <li>Think through edge cases before coding.</li>
-                  <li>Start with a correct solution, then improve it.</li>
-                </ul>
+                <h3>Input format</h3>
+                <p>{problem.input_format || "No input format provided yet."}</p>
+              </div>
+
+              <div className="workspace-subsection">
+                <h3>Output format</h3>
+                <p>{problem.output_format || "No output format provided yet."}</p>
+              </div>
+
+              <div className="workspace-subsection">
+                <h3>Constraints</h3>
+                <p>{problem.constraints_text || "No constraints provided yet."}</p>
+              </div>
+
+              <div className="workspace-subsection">
+                <h3>Examples</h3>
+                <p>{problem.examples_text || "No examples provided yet."}</p>
+              </div>
+
+              <div className="workspace-subsection">
+                <h3>Sample test cases</h3>
+                {problem.sample_test_cases?.length ? (
+                  <div className="sample-case-list">
+                    {problem.sample_test_cases.map((testCase, index) => (
+                      <article className="sample-case-card" key={testCase.id || index}>
+                        <strong>Sample {index + 1}</strong>
+                        <p className="history-snippet">{testCase.input_data}</p>
+                        <strong>Expected output</strong>
+                        <p className="history-snippet">{testCase.expected_output}</p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No sample cases shared yet.</p>
+                )}
               </div>
             </article>
 
@@ -268,12 +315,7 @@ export default function StudentProblemDetails() {
                   <label className="form-field editor-toolbar-label" htmlFor="language">
                     Language
                   </label>
-                  <select
-                    id="language"
-                    name="language"
-                    value={editor.language}
-                    onChange={handleEditorChange}
-                  >
+                  <select id="language" name="language" value={editor.language} onChange={handleEditorChange}>
                     <option value="python">Python</option>
                     <option value="cpp">C++</option>
                     <option value="java">Java</option>
@@ -331,6 +373,10 @@ export default function StudentProblemDetails() {
                         </span>
                       </div>
                       <strong>{submission.language.toUpperCase()}</strong>
+                      <p className="question-meta">
+                        {submission.passed_test_cases}/{submission.total_test_cases} test cases -{" "}
+                        {submission.execution_time_ms ?? "-"} ms
+                      </p>
                       <p className="history-snippet">{submission.source_code}</p>
                     </article>
                   ))}

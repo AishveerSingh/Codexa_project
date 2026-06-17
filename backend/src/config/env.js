@@ -8,6 +8,6 @@ export const env = {
   databaseUrl:
     process.env.DATABASE_URL ||
     "postgresql://postgres:postgres@localhost:5432/coding_platform",
-  pgSsl: process.env.PGSSL === "true"
+  pgSsl: process.env.PGSSL === "true",
+  jwtSecret: process.env.JWT_SECRET || "development-jwt-secret-change-me"
 };
-

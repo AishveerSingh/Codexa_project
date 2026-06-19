@@ -201,7 +201,10 @@ export async function requireCourseAccess(req, res, next) {
 
     if (!allowed) {
       return res.status(403).json({
-        message: "You do not have access to this course."
+        message:
+          req.currentUser.role === "student"
+            ? "You do not have access to this course. Only students from the assigned branch, semester, section, and batch can open it."
+            : "You do not have access to this course."
       });
     }
 

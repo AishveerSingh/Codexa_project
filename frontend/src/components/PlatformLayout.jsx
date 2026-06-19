@@ -2,21 +2,21 @@ import { Link, useLocation } from "react-router-dom";
 
 const navItemsByRole = {
   student: [
-    { to: "/student/dashboard", label: "Overview" },
+    { to: "/student/dashboard", label: "Dashboard" },
     { to: "/student/courses", label: "Courses" },
-    { to: "/student/problems", label: "Problem Set" },
+    { to: "/student/problems", label: "Practice" },
     { to: "/student/account", label: "Account" }
   ],
   faculty: [
-    { to: "/faculty/dashboard", label: "Overview" },
-    { to: "/faculty/courses", label: "Assigned Courses" },
+    { to: "/faculty/dashboard", label: "Dashboard" },
+    { to: "/faculty/courses", label: "Courses" },
     { to: "/faculty/account", label: "Account" }
   ],
   admin: [
-    { to: "/admin/dashboard", label: "Overview" },
+    { to: "/admin/dashboard", label: "Dashboard" },
     { to: "/admin/courses", label: "Courses" },
     { to: "/admin/problems", label: "Problem Bank" },
-    { to: "/admin/problems/new", label: "Create Problem" },
+    { to: "/admin/problems/new", label: "Add Problem" },
     { to: "/admin/students", label: "Students" },
     { to: "/admin/account", label: "Account" }
   ]
@@ -44,9 +44,9 @@ export function PlatformLayout({
       <aside className="platform-sidebar">
         <Link className="platform-brand" to="/">
           <span className="platform-brand-mark">
-            {role === "admin" ? "CP Admin" : role === "faculty" ? "CP Faculty" : "CP Student"}
+            {role === "admin" ? "CT Admin" : role === "faculty" ? "CT Faculty" : "CT Student"}
           </span>
-          <strong>Coding Platform</strong>
+          <strong>CodeTantra Style Portal</strong>
         </Link>
 
         <div className="platform-sidebar-copy">
@@ -55,10 +55,10 @@ export function PlatformLayout({
           </p>
           <h2>
             {role === "admin"
-              ? "Manage the platform like a control room."
+              ? "Run the academic coding portal like an operations desk."
               : role === "faculty"
-                ? "Teach with tightly scoped course access."
-                : "Train like a modern coding workspace."}
+                ? "Teach through assigned sections, labs, and coursework."
+                : "Practice through a campus coding workspace."}
           </h2>
           <p>{sidebarNote}</p>
         </div>

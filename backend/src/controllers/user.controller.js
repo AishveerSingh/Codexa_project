@@ -2,6 +2,23 @@ import { pool } from "../config/db.js";
 import { hashPassword, signAuthToken, verifyPassword } from "../utils/auth.js";
 
 function sanitizeUser(row) {
+  const profile =
+    row.role === "student"
+      ? {
+          roll_number: row.roll_number || null,
+          branch: row.branch || null,
+          semester: row.semester || null,
+          section: row.section || null,
+          batch: row.batch || null
+        }
+      : row.role === "faculty"
+        ? {
+            employee_id: row.employee_id || null,
+            department: row.department || null,
+            designation: row.designation || null
+          }
+        : null;
+
   return {
     id: row.id,
     full_name: row.full_name,
@@ -9,7 +26,8 @@ function sanitizeUser(row) {
     role: row.role,
     created_at: row.created_at,
     submission_count: row.submission_count,
-    accepted_count: row.accepted_count
+    accepted_count: row.accepted_count,
+    profile
   };
 }
 
@@ -23,11 +41,30 @@ async function fetchUserSummary(userId) {
         u.role,
         u.created_at,
         COUNT(s.id)::int AS submission_count,
-        COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count
+        COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count,
+        sp.roll_number,
+        sp.branch,
+        sp.semester,
+        sp.section,
+        sp.batch,
+        fp.employee_id,
+        fp.department,
+        fp.designation
       FROM users u
+      LEFT JOIN student_profiles sp ON sp.user_id = u.id
+      LEFT JOIN faculty_profiles fp ON fp.user_id = u.id
       LEFT JOIN submissions s ON s.student_id = u.id
       WHERE u.id = $1
-      GROUP BY u.id
+      GROUP BY
+        u.id,
+        sp.roll_number,
+        sp.branch,
+        sp.semester,
+        sp.section,
+        sp.batch,
+        fp.employee_id,
+        fp.department,
+        fp.designation
     `,
     [userId]
   );
@@ -111,11 +148,11 @@ async function registerUser(req, res, next, role) {
           [normalizedName, passwordHash, role, existing.id]
         );
 
-        const user = upgradedUser.rows[0];
-        const token = signAuthToken(user);
+        const user = await fetchUserSummary(upgradedUser.rows[0].id);
+        const token = signAuthToken(upgradedUser.rows[0]);
 
         return res.status(201).json({
-          message: `${role === "admin" ? "Admin" : "Student"} account secured successfully.`,
+          message: `${role === "admin" ? "Admin" : role === "faculty" ? "Faculty" : "Student"} account secured successfully.`,
           token,
           user
         });
@@ -170,12 +207,13 @@ async function registerUser(req, res, next, role) {
       }
 
       await client.query("COMMIT");
+      const createdUser = await fetchUserSummary(user.id);
       const token = signAuthToken(user);
 
       res.status(201).json({
         message: `${role === "admin" ? "Admin" : role === "faculty" ? "Faculty" : "Student"} account created successfully.`,
         token,
-        user
+        user: createdUser
       });
     } catch (error) {
       await client.query("ROLLBACK");
@@ -230,8 +268,8 @@ async function loginUser(req, res, next, role) {
       });
     }
 
-    const user = sanitizeUser(userRecord);
-    const token = signAuthToken(user);
+    const user = await fetchUserSummary(userRecord.id);
+    const token = signAuthToken(userRecord);
 
     res.json({
       message: `${role === "admin" ? "Admin" : role === "faculty" ? "Faculty" : "Student"} login successful.`,
@@ -264,7 +302,12 @@ export async function getUsers(req, res, next) {
 
     if (search) {
       values.push(`%${search}%`);
-      filters.push(`(u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length})`);
+      filters.push(`(
+        u.full_name ILIKE $${values.length}
+        OR u.email ILIKE $${values.length}
+        OR sp.roll_number ILIKE $${values.length}
+        OR fp.employee_id ILIKE $${values.length}
+      )`);
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
@@ -278,11 +321,30 @@ export async function getUsers(req, res, next) {
           u.role,
           u.created_at,
           COUNT(s.id)::int AS submission_count,
-          COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count
+          COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count,
+          sp.roll_number,
+          sp.branch,
+          sp.semester,
+          sp.section,
+          sp.batch,
+          fp.employee_id,
+          fp.department,
+          fp.designation
         FROM users u
+        LEFT JOIN student_profiles sp ON sp.user_id = u.id
+        LEFT JOIN faculty_profiles fp ON fp.user_id = u.id
         LEFT JOIN submissions s ON s.student_id = u.id
         ${whereClause}
-        GROUP BY u.id
+        GROUP BY
+          u.id,
+          sp.roll_number,
+          sp.branch,
+          sp.semester,
+          sp.section,
+          sp.batch,
+          fp.employee_id,
+          fp.department,
+          fp.designation
         ORDER BY u.created_at DESC
       `,
       values

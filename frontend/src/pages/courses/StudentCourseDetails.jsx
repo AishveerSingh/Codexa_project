@@ -7,6 +7,8 @@ import { getStudentSession } from "../../utils/session";
 export default function StudentCourseDetails() {
   const { courseId } = useParams();
   const session = getStudentSession();
+  const user = session?.user;
+  const profile = user?.profile || null;
   const [data, setData] = useState(null);
   const [status, setStatus] = useState({
     loading: true,
@@ -79,7 +81,11 @@ export default function StudentCourseDetails() {
       role="student"
       eyebrow="Course Details"
       title={data ? `${data.code} - ${data.title}` : "Course details"}
-      subtitle="Assignments, materials, and coding content that belong to your own batch and section."
+      subtitle={
+        user
+          ? `This course is available to your academic profile: ${profile?.branch || "-"}, semester ${profile?.semester || "-"}, section ${profile?.section || "-"}, batch ${profile?.batch || "-"}.`
+          : "Assignments, materials, and coding content that belong to your own batch and section."
+      }
       meta="Protected Course"
       sidebarNote="If a course is not assigned to your academic profile, the backend blocks the request before data is returned."
     >

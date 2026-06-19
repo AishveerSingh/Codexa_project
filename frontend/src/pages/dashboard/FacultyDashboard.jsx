@@ -13,6 +13,7 @@ export default function FacultyDashboard() {
     loading: Boolean(session?.token),
     error: ""
   });
+  const profile = user?.profile || null;
 
   useEffect(() => {
     let isMounted = true;
@@ -57,8 +58,12 @@ export default function FacultyDashboard() {
       role="faculty"
       eyebrow="Faculty Dashboard"
       title={user ? `Welcome back, ${user.fullName || user.full_name}.` : "Faculty workspace"}
-      subtitle="Manage only the courses assigned to you, publish content, and review enrolled students."
-      meta="Teaching Mode"
+      subtitle={
+        user
+          ? `${profile?.department || "Department"} | ${profile?.designation || "Faculty"} | Employee ID ${profile?.employee_id || "-"}.`
+          : "Manage only the courses assigned to you, publish content, and review enrolled students."
+      }
+      meta="Faculty Portal"
       actions={
         <Link className="auth-button student-button panel-action-button" to="/faculty/courses">
           Open courses
@@ -74,14 +79,14 @@ export default function FacultyDashboard() {
             note: "Visible to this faculty account"
           },
           {
+            label: "Department",
+            value: profile?.department || "-",
+            note: "Teaching department"
+          },
+          {
             label: "Assignments",
             value: courses.reduce((sum, course) => sum + (course.assignmentCount || 0), 0),
             note: "Across all assigned courses"
-          },
-          {
-            label: "Materials",
-            value: courses.reduce((sum, course) => sum + (course.materialsCount || 0), 0),
-            note: "Uploaded study resources"
           }
         ]}
       />

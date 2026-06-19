@@ -131,10 +131,10 @@ export default function AdminDashboard() {
       title={user ? `Welcome back, ${user.full_name}.` : "Admin control room"}
       subtitle={
         user
-          ? `Monitor the problem bank, student activity, and administrative actions from one operations workspace. Signed in as ${user.email}.`
+          ? `Monitor courses, student activity, and administrative actions from one academic operations workspace. Signed in as ${user.email}.`
           : "Open the admin login page to register or sign in."
       }
-      meta="Oversight Mode"
+      meta="Admin Portal"
       actions={
         <>
           <Link className="auth-button admin-button panel-action-button" to="/admin/courses">
@@ -177,8 +177,8 @@ export default function AdminDashboard() {
         }
       >
         <p className="dashboard-copy">
-          Create courses, map them to branches and semesters, assign faculty, and enforce student
-          access with backend permission checks.
+          Create courses, map them to branches and semesters, assign faculty, and enforce
+          section-wise student access with backend permission checks.
         </p>
       </PlatformSection>
 

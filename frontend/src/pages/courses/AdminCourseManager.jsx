@@ -15,6 +15,16 @@ const initialForm = {
   facultyIds: []
 };
 
+function withFallbackOptions(filterData) {
+  return {
+    branches: filterData.branches?.length ? filterData.branches : branchOptions,
+    sections: filterData.sections?.length ? filterData.sections : sectionOptions,
+    batches: filterData.batches?.length ? filterData.batches : initialForm.batchTargets,
+    semesters: filterData.semesters?.length ? filterData.semesters : buildSemesterOptions(),
+    faculty: filterData.faculty ?? []
+  };
+}
+
 export default function AdminCourseManager() {
   const session = getAdminSession();
   const [courses, setCourses] = useState([]);
@@ -28,11 +38,24 @@ export default function AdminCourseManager() {
   const [form, setForm] = useState(initialForm);
   const [editingCourseId, setEditingCourseId] = useState("");
   const [search, setSearch] = useState("");
+  const [pickerValues, setPickerValues] = useState({
+    branch: initialForm.branchTargets[0],
+    semester: String(initialForm.semesterTargets[0]),
+    section: initialForm.sectionTargets[0],
+    batch: initialForm.batchTargets[0],
+    facultyId: ""
+  });
   const [status, setStatus] = useState({
     loading: true,
     error: "",
     success: ""
   });
+
+  const selectedAudienceSummary = `${form.branchTargets.length} branch${form.branchTargets.length === 1 ? "" : "es"}, ${
+    form.semesterTargets.length
+  } semester${form.semesterTargets.length === 1 ? "" : "s"}, ${form.sectionTargets.length} section${
+    form.sectionTargets.length === 1 ? "" : "s"
+  }, ${form.batchTargets.length} batch${form.batchTargets.length === 1 ? "" : "es"}`;
 
   async function loadData() {
     setStatus((current) => ({
@@ -47,7 +70,7 @@ export default function AdminCourseManager() {
       ]);
 
       setCourses(courseList);
-      setFilters(filterData);
+      setFilters(withFallbackOptions(filterData));
       setStatus({
         loading: false,
         error: "",
@@ -66,12 +89,21 @@ export default function AdminCourseManager() {
     loadData();
   }, [search]);
 
-  function handleMultiSelect(field, value) {
+  function addSelection(field, value) {
+    if (!value && value !== 0) {
+      return;
+    }
+
     setForm((current) => ({
       ...current,
-      [field]: current[field].includes(value)
-        ? current[field].filter((entry) => entry !== value)
-        : [...current[field], value]
+      [field]: current[field].includes(value) ? current[field] : [...current[field], value]
+    }));
+  }
+
+  function removeSelection(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: current[field].filter((entry) => entry !== value)
     }));
   }
 
@@ -144,6 +176,14 @@ export default function AdminCourseManager() {
       batchTargets: course.batchTargets,
       facultyIds: course.faculty.map((member) => member.id)
     });
+    setPickerValues((current) => ({
+      ...current,
+      branch: course.branchTargets[0] || filters.branches[0] || branchOptions[0],
+      semester: String(course.semesterTargets[0] || filters.semesters[0] || 1),
+      section: course.sectionTargets[0] || filters.sections[0] || sectionOptions[0],
+      batch: course.batchTargets[0] || filters.batches[0] || initialForm.batchTargets[0],
+      facultyId: course.faculty[0]?.id || ""
+    }));
   }
 
   return (
@@ -151,24 +191,27 @@ export default function AdminCourseManager() {
       role="admin"
       eyebrow="Course Management"
       title="Batch-wise course management"
-      subtitle="Create, edit, assign, and archive courses by branch, semester, section, and batch."
+      subtitle="Assign faculty and choose exactly which branch, semester, section, and batch of students can see each course."
       meta="Admin Control"
-      sidebarNote="Every course assignment is audience-based and then enforced again on course detail requests."
+      sidebarNote="Admin controls course visibility here. Students outside the selected semester, section, branch, or batch cannot see or open the course."
     >
       <PlatformSection label="Course Builder" title={editingCourseId ? "Edit course" : "Create course"}>
         <form className="auth-form course-form-grid" onSubmit={handleSubmit}>
-          <input
-            placeholder="Course code"
-            value={form.code}
-            onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-            required
-          />
-          <input
-            placeholder="Course title"
-            value={form.title}
-            onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-            required
-          />
+          <div className="course-builder-top-grid">
+            <input
+              placeholder="Course code"
+              value={form.code}
+              onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+              required
+            />
+            <input
+              placeholder="Course title"
+              value={form.title}
+              onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+              required
+            />
+          </div>
+
           <textarea
             rows="4"
             placeholder="Course description"
@@ -176,78 +219,243 @@ export default function AdminCourseManager() {
             onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
           />
 
-          <div className="selection-grid">
+          <div className="selection-grid audience-selection-grid">
             <div className="selection-card">
               <strong>Branches</strong>
-              {filters.branches.map((branch) => (
-                <label className="selection-option" key={branch}>
-                  <input
-                    type="checkbox"
-                    checked={form.branchTargets.includes(branch)}
-                    onChange={() => handleMultiSelect("branchTargets", branch)}
-                  />
-                  <span>{branch}</span>
-                </label>
-              ))}
+              <div className="selection-inline">
+                <select
+                  className="filter-select"
+                  value={pickerValues.branch}
+                  onChange={(event) =>
+                    setPickerValues((current) => ({
+                      ...current,
+                      branch: event.target.value
+                    }))
+                  }
+                >
+                  {filters.branches.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="auth-button admin-button compact-button"
+                  type="button"
+                  onClick={() => addSelection("branchTargets", pickerValues.branch)}
+                  disabled={!pickerValues.branch}
+                >
+                  Add
+                </button>
+              </div>
+              {filters.branches.length === 0 ? <p className="dashboard-copy">No branch options available.</p> : null}
+              <div className="pill-row selection-pill-row">
+                {form.branchTargets.map((branch) => (
+                  <button
+                    className="selection-pill"
+                    key={branch}
+                    type="button"
+                    onClick={() => removeSelection("branchTargets", branch)}
+                  >
+                    {branch} <span>Remove</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="selection-card">
-              <strong>Semesters</strong>
-              {filters.semesters.map((semester) => (
-                <label className="selection-option" key={semester}>
-                  <input
-                    type="checkbox"
-                    checked={form.semesterTargets.includes(semester)}
-                    onChange={() => handleMultiSelect("semesterTargets", semester)}
-                  />
-                  <span>Semester {semester}</span>
-                </label>
-              ))}
+              <strong>Semesters allowed to view</strong>
+              <div className="selection-inline">
+                <select
+                  className="filter-select"
+                  value={pickerValues.semester}
+                  onChange={(event) =>
+                    setPickerValues((current) => ({
+                      ...current,
+                      semester: event.target.value
+                    }))
+                  }
+                >
+                  {filters.semesters.map((semester) => (
+                    <option key={semester} value={semester}>
+                      Semester {semester}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="auth-button admin-button compact-button"
+                  type="button"
+                  onClick={() => addSelection("semesterTargets", Number(pickerValues.semester))}
+                  disabled={!pickerValues.semester}
+                >
+                  Add
+                </button>
+              </div>
+              {filters.semesters.length === 0 ? <p className="dashboard-copy">No semester options available.</p> : null}
+              <div className="pill-row selection-pill-row">
+                {form.semesterTargets.map((semester) => (
+                  <button
+                    className="selection-pill"
+                    key={semester}
+                    type="button"
+                    onClick={() => removeSelection("semesterTargets", semester)}
+                  >
+                    Semester {semester} <span>Remove</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="selection-card">
               <strong>Sections</strong>
-              {filters.sections.map((section) => (
-                <label className="selection-option" key={section}>
-                  <input
-                    type="checkbox"
-                    checked={form.sectionTargets.includes(section)}
-                    onChange={() => handleMultiSelect("sectionTargets", section)}
-                  />
-                  <span>{section}</span>
-                </label>
+              <div className="selection-inline">
+                <select
+                  className="filter-select"
+                  value={pickerValues.section}
+                  onChange={(event) =>
+                    setPickerValues((current) => ({
+                      ...current,
+                      section: event.target.value
+                    }))
+                  }
+                >
+                  {filters.sections.map((section) => (
+                    <option key={section} value={section}>
+                      Section {section}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="auth-button admin-button compact-button"
+                  type="button"
+                  onClick={() => addSelection("sectionTargets", pickerValues.section)}
+                  disabled={!pickerValues.section}
+                >
+                  Add
+                </button>
+              </div>
+              {filters.sections.length === 0 ? <p className="dashboard-copy">No section options available.</p> : null}
+              <div className="pill-row selection-pill-row">
+                {form.sectionTargets.map((section) => (
+                  <button
+                    className="selection-pill"
+                    key={section}
+                    type="button"
+                    onClick={() => removeSelection("sectionTargets", section)}
+                  >
+                    Section {section} <span>Remove</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="course-builder-summary-card">
+            <p className="dashboard-copy">
+              Current audience: {selectedAudienceSummary}. Only students matching all selected academic filters will be enrolled and able to see this course.
+            </p>
+          </div>
+
+          <div className="selection-card">
+            <strong>Student batches</strong>
+            <div className="selection-inline">
+              <select
+                className="filter-select"
+                value={pickerValues.batch}
+                onChange={(event) =>
+                  setPickerValues((current) => ({
+                    ...current,
+                    batch: event.target.value
+                  }))
+                }
+              >
+                {filters.batches.map((batch) => (
+                  <option key={batch} value={batch}>
+                    {batch}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="auth-button admin-button compact-button"
+                type="button"
+                onClick={() => addSelection("batchTargets", pickerValues.batch)}
+                disabled={!pickerValues.batch}
+              >
+                Add
+              </button>
+            </div>
+            <input
+              placeholder="Add a custom batch value if needed"
+              value={pickerValues.batch}
+              onChange={(event) =>
+                setPickerValues((current) => ({
+                  ...current,
+                  batch: event.target.value
+                }))
+              }
+            />
+            <div className="pill-row selection-pill-row">
+              {form.batchTargets.map((batch) => (
+                <button
+                  className="selection-pill"
+                  key={batch}
+                  type="button"
+                  onClick={() => removeSelection("batchTargets", batch)}
+                >
+                  {batch} <span>Remove</span>
+                </button>
               ))}
             </div>
           </div>
 
-          <input
-            placeholder="Comma-separated batches, e.g. 2024-2028, 2025-2029"
-            value={form.batchTargets.join(", ")}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                batchTargets: event.target.value
-                  .split(",")
-                  .map((entry) => entry.trim())
-                  .filter(Boolean)
-              }))
-            }
-          />
-
           <div className="selection-card">
             <strong>Assigned faculty</strong>
-            {filters.faculty.map((member) => (
-              <label className="selection-option" key={member.id}>
-                <input
-                  type="checkbox"
-                  checked={form.facultyIds.includes(member.id)}
-                  onChange={() => handleMultiSelect("facultyIds", member.id)}
-                />
-                <span>
-                  {member.fullName} ({member.email})
-                </span>
-              </label>
-            ))}
+            <div className="selection-inline">
+              <select
+                className="filter-select"
+                value={pickerValues.facultyId}
+                onChange={(event) =>
+                  setPickerValues((current) => ({
+                    ...current,
+                    facultyId: event.target.value
+                  }))
+                }
+              >
+                <option value="">Select faculty</option>
+                {filters.faculty.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.fullName} ({member.email})
+                  </option>
+                ))}
+              </select>
+              <button
+                className="auth-button admin-button compact-button"
+                type="button"
+                onClick={() => addSelection("facultyIds", pickerValues.facultyId)}
+                disabled={!pickerValues.facultyId}
+              >
+                Add
+              </button>
+            </div>
+            {filters.faculty.length === 0 ? (
+              <p className="dashboard-copy">No faculty accounts found yet. Create faculty accounts first, then assign them here.</p>
+            ) : null}
+            <div className="pill-row selection-pill-row">
+              {form.facultyIds.map((facultyId) => {
+                const member = filters.faculty.find((entry) => entry.id === facultyId);
+
+                return (
+                  <button
+                    className="selection-pill"
+                    key={facultyId}
+                    type="button"
+                    onClick={() => removeSelection("facultyIds", facultyId)}
+                  >
+                    {member ? member.fullName : facultyId} <span>Remove</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="platform-section-actions">
@@ -299,11 +507,11 @@ export default function AdminCourseManager() {
                 <h3>{course.title}</h3>
                 <p>{course.description || "No description added yet."}</p>
                 <p className="question-meta">
-                  {course.branchTargets.join(", ")} | Sem {course.semesterTargets.join(", ")} | Batches{" "}
-                  {course.batchTargets.join(", ")}
+                  {course.branchTargets.join(", ")} | Sem {course.semesterTargets.join(", ")} | Sec{" "}
+                  {course.sectionTargets.join(", ")} | Batches {course.batchTargets.join(", ")}
                 </p>
                 <p className="question-meta">
-                  Faculty: {course.faculty.map((member) => member.fullName).join(", ")}
+                  Visible only to selected students. Faculty: {course.faculty.map((member) => member.fullName).join(", ")}
                 </p>
                 <div className="platform-section-actions">
                   <button className="auth-button admin-button detail-link" type="button" onClick={() => startEdit(course)}>

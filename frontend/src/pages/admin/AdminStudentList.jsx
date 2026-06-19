@@ -134,7 +134,7 @@ export default function AdminStudentList() {
             aria-label="Search students"
             className="filter-input"
             name="search"
-            placeholder="Search by student name or email"
+            placeholder="Search by student name, email, or roll number"
             type="search"
             value={filters.search}
             onChange={(event) => {
@@ -166,6 +166,10 @@ export default function AdminStudentList() {
                     </div>
                     <h3>{student.full_name}</h3>
                     <p>{student.email}</p>
+                    <p className="question-meta">
+                      {student.profile?.roll_number || "No roll number"} | {student.profile?.branch || "-"} | Sem{" "}
+                      {student.profile?.semester || "-"} | Sec {student.profile?.section || "-"}
+                    </p>
                     <div className="stats-inline">
                       <span>{student.submission_count} submissions</span>
                       <span>{student.accepted_count} accepted</span>

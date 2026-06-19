@@ -7,6 +7,7 @@ import { getStudentSession } from "../../utils/session";
 export default function StudentCourseList() {
   const session = getStudentSession();
   const user = session?.user;
+  const profile = user?.profile || null;
   const [courses, setCourses] = useState([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState({
@@ -50,7 +51,11 @@ export default function StudentCourseList() {
       role="student"
       eyebrow="Student Courses"
       title={user ? `${user.fullName || user.full_name}'s assigned courses` : "Assigned courses"}
-      subtitle="Only the courses mapped to your branch, semester, section, and batch appear here."
+      subtitle={
+        user
+          ? `You can only see courses mapped to ${profile?.branch || "-"}, semester ${profile?.semester || "-"}, section ${profile?.section || "-"}, batch ${profile?.batch || "-"}.`
+          : "Only the courses mapped to your branch, semester, section, and batch appear here."
+      }
       meta="Batch-wise Access"
       sidebarNote="Course visibility is validated on the backend too, so changing the URL alone is not enough to open another batch's course."
     >
@@ -78,6 +83,9 @@ export default function StudentCourseList() {
                 <p>{course.description || "No description added yet."}</p>
                 <p className="question-meta">
                   Faculty: {course.faculty.map((member) => member.fullName).join(", ")}
+                </p>
+                <p className="question-meta">
+                  Semester {course.semesterTargets.join(", ")} | Section {course.sectionTargets.join(", ")}
                 </p>
                 <Link className="auth-button student-button detail-link" to={`/student/courses/${course.id}`}>
                   Open course

@@ -6,6 +6,7 @@ import { getFacultySession, saveFacultySession } from "../../utils/session";
 export default function FacultyAccountPage() {
   const session = getFacultySession();
   const user = session?.user;
+  const profile = user?.profile || null;
 
   return (
     <PlatformLayout
@@ -13,7 +14,7 @@ export default function FacultyAccountPage() {
       eyebrow="Account Settings"
       title={user ? `${user.full_name}'s faculty profile` : "Faculty account"}
       subtitle="Manage faculty identity details and password from a dedicated settings page without mixing it into course delivery screens."
-      meta="Faculty Settings"
+      meta="Faculty Profile"
       actions={
         <Link className="auth-button student-button panel-action-button" to="/faculty/dashboard">
           Back to dashboard
@@ -29,22 +30,27 @@ export default function FacultyAccountPage() {
             note: "Faculty profile name"
           },
           {
-            label: "Email",
-            value: user?.email || "-",
-            note: "Current sign-in email"
+            label: "Employee ID",
+            value: profile?.employee_id || "-",
+            note: "Institute identifier"
           },
           {
-            label: "Role",
-            value: user?.role || "faculty",
-            note: "Access type"
+            label: "Department",
+            value: profile?.department || "-",
+            note: "Teaching department"
+          },
+          {
+            label: "Designation",
+            value: profile?.designation || "-",
+            note: "Current faculty role"
           }
         ]}
       />
 
       <PlatformSection label="Profile" title="Faculty account overview">
         <p className="dashboard-copy">
-          Keep faculty details and password management in this dedicated settings area so the course
-          workspace stays focused on teaching tasks.
+          Keep faculty identity details, department information, and password management in this
+          dedicated settings area so the course workspace stays focused on teaching tasks.
         </p>
       </PlatformSection>
 

@@ -17,6 +17,34 @@ export default function StudentCourseDetails() {
   const [submissionForms, setSubmissionForms] = useState({});
   const [submitStatus, setSubmitStatus] = useState({});
 
+  function applyOptimisticAssignmentSubmission(assignmentId) {
+    setData((currentData) => {
+      if (!currentData) {
+        return currentData;
+      }
+
+      return {
+        ...currentData,
+        assignments: currentData.assignments.map((assignment) =>
+          assignment.id === assignmentId
+            ? {
+                ...assignment,
+                submissions: [
+                  {
+                    id: `${assignmentId}-latest`,
+                    submittedAt: new Date().toISOString(),
+                    grade: null,
+                    feedback: "",
+                    status: "submitted"
+                  }
+                ]
+              }
+            : assignment
+        )
+      };
+    });
+  }
+
   useEffect(() => {
     let isMounted = true;
 
@@ -57,6 +85,8 @@ export default function StudentCourseDetails() {
         },
         session?.token
       );
+
+      applyOptimisticAssignmentSubmission(assignmentId);
 
       setSubmitStatus((current) => ({
         ...current,

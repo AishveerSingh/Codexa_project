@@ -15,6 +15,7 @@ const navItemsByRole = {
   admin: [
     { to: "/admin/dashboard", label: "Dashboard" },
     { to: "/admin/courses", label: "Courses" },
+    { to: "/admin/faculty", label: "Faculty" },
     { to: "/admin/problems", label: "Problem Bank" },
     { to: "/admin/problems/new", label: "Add Problem" },
     { to: "/admin/students", label: "Students" },

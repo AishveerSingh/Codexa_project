@@ -19,9 +19,9 @@ const userRouter = Router();
 
 userRouter.post("/admin-register", registerAdmin);
 userRouter.post("/admin-login", loginAdmin);
-userRouter.post("/faculty-register", registerFaculty);
+userRouter.post("/faculty-register", requireAuth, requireRole("admin"), registerFaculty);
 userRouter.post("/faculty-login", loginFaculty);
-userRouter.post("/student-register", registerStudent);
+userRouter.post("/student-register", requireAuth, requireRole("admin"), registerStudent);
 userRouter.post("/student-login", loginStudent);
 
 userRouter.get("/me", requireAuth, getCurrentUser);

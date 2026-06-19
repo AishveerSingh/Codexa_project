@@ -1435,6 +1435,34 @@ a {
   font-weight: 700;
 }
 
+.workspace-timer-chip.paused {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(100, 116, 139, 0.12);
+  color: #cbd5e1;
+}
+
+.workspace-timer-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspace-timer-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workspace-timer-reset {
+  border-color: rgba(244, 114, 182, 0.24);
+}
+
 .workspace-arrow {
   display: inline-flex;
   align-items: center;
@@ -1944,12 +1972,65 @@ a {
 .workspace-console-tab {
   border-radius: 12px 12px 0 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  cursor: pointer;
 }
 
 .workspace-console-tab.active {
   background: rgba(124, 58, 237, 0.16);
   color: #e9d5ff;
   border-color: rgba(139, 92, 246, 0.28);
+}
+
+.workspace-disclosure-button {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.workspace-disclosure-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(30, 41, 59, 0.92);
+}
+
+.workspace-toast {
+  position: fixed;
+  top: 1.4rem;
+  right: 1.4rem;
+  z-index: 50;
+  display: grid;
+  gap: 0.2rem;
+  min-width: 260px;
+  max-width: 360px;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.34);
+  color: #f8fafc;
+}
+
+.workspace-toast strong {
+  font-size: 1rem;
+}
+
+.workspace-toast span {
+  color: rgba(248, 250, 252, 0.88);
+  line-height: 1.45;
+}
+
+.workspace-toast-success {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.96), rgba(16, 185, 129, 0.92));
+}
+
+.workspace-toast-error {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.96), rgba(249, 115, 22, 0.92));
 }
 
 .workspace-submit-row {
@@ -2593,6 +2674,12 @@ body,
   background: rgba(245, 158, 11, 0.12);
   border-color: rgba(245, 158, 11, 0.22);
   color: #92400e;
+}
+
+[data-theme="light"] .workspace-timer-chip.paused {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #475569;
 }
 
 [data-theme="light"] .workspace-brief-card,

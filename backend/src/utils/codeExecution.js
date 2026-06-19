@@ -1,21 +1,28 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { spawn } from "node:child_process";
-const TEMP_DIR_PREFIX = "coding-platform-";
-const EXECUTION_TIMEOUT_MS = 2000;
-const MAX_OUTPUT_LENGTH = 4000;
+import { env } from "../config/env.js";
+
+const languageIds = {
+  cpp: Number(env.judge0LanguageCpp) || 105,
+  java: Number(env.judge0LanguageJava) || 91,
+  javascript: Number(env.judge0LanguageJavascript) || 102,
+  python: Number(env.judge0LanguagePython) || 92
+};
+
+function encodeBase64(str) {
+  return Buffer.from(str ?? "", "utf8").toString("base64");
+}
+
+function decodeBase64(str) {
+  if (!str) return "";
+  return Buffer.from(str, "base64").toString("utf8");
+}
 
 function normalizeOutput(output) {
   return (output ?? "").replace(/\r\n/g, "\n").trim();
 }
 
-function truncateOutput(output) {
-  if (!output) {
-    return "";
-  }
-
-  return output.length > MAX_OUTPUT_LENGTH ? `${output.slice(0, MAX_OUTPUT_LENGTH)}...` : output;
+function truncateOutput(output, maxLength = 4000) {
+  if (!output) return "";
+  return output.length > maxLength ? `${output.slice(0, maxLength)}...` : output;
 }
 
 function buildFeedback({ stage, passedTestCases, totalTestCases, stdout = "", stderr = "" }) {
@@ -52,334 +59,263 @@ function verdictLabelFromErrorType(errorType) {
   }
 }
 
-async function runProcess(command, args, { cwd, input = "", timeoutMs = EXECUTION_TIMEOUT_MS }) {
-  return new Promise((resolve) => {
-    const startedAt = Date.now();
-    const child = spawn(command, args, {
-      cwd,
-      stdio: "pipe"
-    });
-    let stdout = "";
-    let stderr = "";
-    let finished = false;
-    let timedOut = false;
+export async function executeSubmission({ language, sourceCode, testCases }) {
+  const normalizedLanguage = language.trim().toLowerCase();
+  const languageId = languageIds[normalizedLanguage];
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill();
-    }, timeoutMs);
+  if (!languageId) {
+    return {
+      status: "wrong_answer",
+      errorType: "compile_error",
+      verdictLabel: "Unsupported Language",
+      passedTestCases: 0,
+      totalTestCases: testCases.length,
+      executionTimeMs: 0,
+      memoryKb: null,
+      stdout: "",
+      stderr: `Unsupported language: ${language}`,
+      compilerOutput: `Unsupported language: ${language}`
+    };
+  }
 
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
+  const casesToRun = testCases.length > 0
+    ? testCases
+    : [{ input_data: "", expected_output: "", id: "no-test-cases" }];
 
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
+  // Prepare Judge0 headers
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (env.judge0ApiKey) {
+    headers["X-Auth-Token"] = env.judge0ApiKey;
+    if (env.judge0ApiHost) {
+      headers["X-RapidAPI-Key"] = env.judge0ApiKey;
+      headers["X-RapidAPI-Host"] = env.judge0ApiHost;
+    }
+  }
 
-    child.on("error", (error) => {
-      if (finished) {
-        return;
-      }
+  // 1. Submit batch request to Judge0
+  const submissionsPayload = {
+    submissions: casesToRun.map(tc => ({
+      language_id: languageId,
+      source_code: encodeBase64(sourceCode),
+      stdin: encodeBase64(tc.input_data),
+      expected_output: encodeBase64(tc.expected_output)
+    }))
+  };
 
-      finished = true;
-      clearTimeout(timer);
-      resolve({
-        ok: false,
-        stdout,
-        stderr: `${stderr}${stderr ? "\n" : ""}${error.message}`,
-        executionTimeMs: Date.now() - startedAt,
-        timedOut,
-        code: null
-      });
-    });
-
-    child.on("close", (code) => {
-      if (finished) {
-        return;
-      }
-
-      finished = true;
-      clearTimeout(timer);
-      resolve({
-        ok: !timedOut && code === 0,
-        stdout,
-        stderr,
-        executionTimeMs: Date.now() - startedAt,
-        timedOut,
-        code
-      });
+  let tokens = [];
+  try {
+    const response = await fetch(`${env.judge0BaseUrl}/submissions/batch?base64_encoded=true`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(submissionsPayload)
     });
 
-    if (input) {
-      child.stdin.write(input);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Judge0 Submit Batch Error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    child.stdin.end();
-  });
-}
-
-async function prepareJavaScript(tempDir, sourceCode) {
-  const filePath = path.join(tempDir, "solution.js");
-  await writeFile(filePath, sourceCode, "utf8");
-
-  return {
-    command: "node",
-    args: [filePath]
-  };
-}
-
-async function preparePython(tempDir, sourceCode) {
-  const filePath = path.join(tempDir, "solution.py");
-  await writeFile(filePath, sourceCode, "utf8");
-
-  return {
-    command: "python",
-    args: [filePath]
-  };
-}
-
-async function prepareCpp(tempDir, sourceCode) {
-  const sourcePath = path.join(tempDir, "main.cpp");
-  const outputPath = path.join(tempDir, "main.exe");
-  await writeFile(sourcePath, sourceCode, "utf8");
-
-  const compileResult = await runProcess("g++", [sourcePath, "-O2", "-std=c++17", "-o", outputPath], {
-    cwd: tempDir
-  });
-
-  if (!compileResult.ok) {
+    const result = await response.json();
+    tokens = result.map(sub => sub.token);
+  } catch (err) {
+    console.error("Judge0 Submission creation failed:", err);
     return {
-      compileError: buildFeedback({
-        stage: "compile",
-        passedTestCases: 0,
-        totalTestCases: 0,
-        stdout: compileResult.stdout,
-        stderr: compileResult.stderr
-      })
+      status: "wrong_answer",
+      errorType: "runtime_error",
+      verdictLabel: "Internal Error",
+      passedTestCases: 0,
+      totalTestCases: casesToRun.length,
+      executionTimeMs: 0,
+      memoryKb: null,
+      stdout: "",
+      stderr: `Code execution infrastructure error: ${err.message}`,
+      compilerOutput: `Code execution infrastructure error: ${err.message}`
     };
   }
 
-  return {
-    command: outputPath,
-    args: []
-  };
-}
+  // 2. Poll Judge0 until all submissions are finished (status.id > 2)
+  let attempts = 0;
+  const maxAttempts = env.judge0MaxPollAttempts || 20;
+  const interval = env.judge0PollIntervalMs || 500;
+  let batchResults = [];
 
-async function prepareJava(tempDir, sourceCode) {
-  const sourcePath = path.join(tempDir, "Main.java");
-  await writeFile(sourcePath, sourceCode, "utf8");
+  while (attempts < maxAttempts) {
+    await new Promise(resolve => setTimeout(resolve, interval));
+    attempts++;
 
-  const compileResult = await runProcess("javac", [sourcePath], {
-    cwd: tempDir
-  });
+    try {
+      const response = await fetch(`${env.judge0BaseUrl}/submissions/batch?tokens=${tokens.join(",")}&base64_encoded=true`, {
+        method: "GET",
+        headers
+      });
 
-  if (!compileResult.ok) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Judge0 Poll Batch Error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      batchResults = data.submissions || [];
+
+      // Check if all submissions finished processing (status.id > 2)
+      const allFinished = batchResults.every(sub => sub.status && sub.status.id > 2);
+      if (allFinished) {
+        break;
+      }
+    } catch (err) {
+      console.error("Judge0 Polling failed:", err);
+    }
+  }
+
+  if (batchResults.length === 0) {
     return {
-      compileError: buildFeedback({
-        stage: "compile",
-        passedTestCases: 0,
-        totalTestCases: 0,
-        stdout: compileResult.stdout,
-        stderr: compileResult.stderr
-      })
+      status: "wrong_answer",
+      errorType: "runtime_error",
+      verdictLabel: "Execution Timeout",
+      passedTestCases: 0,
+      totalTestCases: casesToRun.length,
+      executionTimeMs: 0,
+      memoryKb: null,
+      stdout: "",
+      stderr: "Judge0 polling timed out or failed to return results.",
+      compilerOutput: "Judge0 polling timed out or failed to return results."
     };
   }
 
-  return {
-    command: "java",
-    args: ["-cp", tempDir, "Main"]
-  };
-}
+  // 3. Process outcomes
+  let passedTestCases = 0;
+  let totalExecutionTimeMs = 0;
+  let maxMemoryKb = 0;
+  const testCaseResults = [];
 
-async function prepareExecutable(tempDir, language, sourceCode) {
-  switch (language) {
-    case "javascript":
-      return prepareJavaScript(tempDir, sourceCode);
-    case "python":
-      return preparePython(tempDir, sourceCode);
-    case "cpp":
-      return prepareCpp(tempDir, sourceCode);
-    case "java":
-      return prepareJava(tempDir, sourceCode);
-    default:
-      return {
-        compileError: `Unsupported language: ${language}`
+  let overallErrorType = null;
+  let overallStatus = "accepted";
+  let firstFailedSubmission = null;
+
+  for (let i = 0; i < casesToRun.length; i++) {
+    const testCase = casesToRun[i];
+    const subResult = batchResults[i] || { status: { id: 13, description: "Internal Error" } };
+
+    const statusId = subResult.status ? subResult.status.id : 13;
+    const timeMs = Math.round((parseFloat(subResult.time) || 0) * 1000);
+    const memoryKb = parseInt(subResult.memory) || 0;
+
+    totalExecutionTimeMs += timeMs;
+    if (memoryKb > maxMemoryKb) {
+      maxMemoryKb = memoryKb;
+    }
+
+    const stdout = normalizeOutput(decodeBase64(subResult.stdout));
+    const stderr = decodeBase64(subResult.stderr || subResult.message);
+    const compileOutput = decodeBase64(subResult.compile_output);
+
+    let passed = false;
+    let testCaseErrorType = null;
+
+    if (statusId === 3) {
+      passed = true;
+      passedTestCases++;
+    } else if (statusId === 4) {
+      testCaseErrorType = "wrong_answer";
+    } else if (statusId === 5) {
+      testCaseErrorType = "time_limit";
+    } else if (statusId === 6) {
+      testCaseErrorType = "compile_error";
+    } else {
+      testCaseErrorType = "runtime_error";
+    }
+
+    testCaseResults.push({
+      id: testCase.id,
+      passed,
+      input: testCase.input_data ?? "",
+      expectedOutput: normalizeOutput(testCase.expected_output),
+      actualOutput: stdout,
+      stderr: stderr || compileOutput || (passed ? "" : subResult.status.description),
+      executionTimeMs: timeMs,
+      isSample: Boolean(testCase.is_sample)
+    });
+
+    if (!passed && !firstFailedSubmission) {
+      firstFailedSubmission = {
+        errorType: testCaseErrorType,
+        stdout,
+        stderr,
+        compileOutput,
+        statusDescription: subResult.status.description
       };
+    }
   }
-}
 
-export async function executeSubmission({ language, sourceCode, testCases }) {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), TEMP_DIR_PREFIX));
+  if (firstFailedSubmission) {
+    const { errorType, stdout, stderr, compileOutput, statusDescription } = firstFailedSubmission;
+    overallErrorType = errorType;
 
-  try {
-    const executable = await prepareExecutable(tempDir, language, sourceCode);
-
-    if (executable.compileError) {
+    if (errorType === "compile_error") {
+      overallStatus = "wrong_answer";
+      const fullCompilerOutput = compileOutput || stderr || statusDescription;
       return {
         status: "wrong_answer",
         errorType: "compile_error",
-        verdictLabel: verdictLabelFromErrorType("compile_error"),
+        verdictLabel: "Compile Error",
         passedTestCases: 0,
-        totalTestCases: testCases.length,
+        totalTestCases: casesToRun.length,
         executionTimeMs: 0,
         memoryKb: null,
         stdout: "",
-        stderr: executable.compileError,
-        compilerOutput: executable.compileError
+        stderr: fullCompilerOutput,
+        testCaseResults,
+        compilerOutput: fullCompilerOutput
       };
+    } else if (errorType === "time_limit") {
+      overallStatus = "time_limit";
+    } else {
+      overallStatus = "wrong_answer";
     }
 
-    let passedTestCases = 0;
-    let totalExecutionTimeMs = 0;
-    const testCaseResults = [];
-
-    const casesToRun =
-      testCases.length > 0 ? testCases : [{ input_data: "", expected_output: "", id: "no-test-cases" }];
-
-    for (const testCase of casesToRun) {
-      const runResult = await runProcess(executable.command, executable.args, {
-        cwd: tempDir,
-        input: testCase.input_data ?? "",
-        timeoutMs: EXECUTION_TIMEOUT_MS
-      });
-
-      totalExecutionTimeMs += runResult.executionTimeMs;
-
-      if (runResult.timedOut) {
-        testCaseResults.push({
-          id: testCase.id,
-          passed: false,
-          input: testCase.input_data ?? "",
-          expectedOutput: testCase.expected_output ?? "",
-          actualOutput: normalizeOutput(runResult.stdout),
-          stderr: runResult.stderr || "Execution timed out.",
-          executionTimeMs: runResult.executionTimeMs,
-          isSample: Boolean(testCase.is_sample)
-        });
-
-        return {
-          status: "time_limit",
-          errorType: "time_limit",
-          verdictLabel: verdictLabelFromErrorType("time_limit"),
-          passedTestCases,
-          totalTestCases: testCases.length,
-          executionTimeMs: totalExecutionTimeMs,
-          memoryKb: null,
-          stdout: runResult.stdout,
-          stderr: runResult.stderr || "Execution timed out.",
-          testCaseResults,
-          compilerOutput: buildFeedback({
-            stage: "run",
-            passedTestCases,
-            totalTestCases: testCases.length,
-            stdout: runResult.stdout,
-            stderr: runResult.stderr || "Execution timed out."
-          })
-        };
-      }
-
-      if (!runResult.ok) {
-        testCaseResults.push({
-          id: testCase.id,
-          passed: false,
-          input: testCase.input_data ?? "",
-          expectedOutput: testCase.expected_output ?? "",
-          actualOutput: normalizeOutput(runResult.stdout),
-          stderr: runResult.stderr,
-          executionTimeMs: runResult.executionTimeMs,
-          isSample: Boolean(testCase.is_sample)
-        });
-
-        return {
-          status: "wrong_answer",
-          errorType: "runtime_error",
-          verdictLabel: verdictLabelFromErrorType("runtime_error"),
-          passedTestCases,
-          totalTestCases: testCases.length,
-          executionTimeMs: totalExecutionTimeMs,
-          memoryKb: null,
-          stdout: runResult.stdout,
-          stderr: runResult.stderr,
-          testCaseResults,
-          compilerOutput: buildFeedback({
-            stage: "run",
-            passedTestCases,
-            totalTestCases: testCases.length,
-            stdout: runResult.stdout,
-            stderr: runResult.stderr
-          })
-        };
-      }
-
-      const actualOutput = normalizeOutput(runResult.stdout);
-      const expectedOutput = normalizeOutput(testCase.expected_output);
-
-      if (actualOutput !== expectedOutput) {
-        testCaseResults.push({
-          id: testCase.id,
-          passed: false,
-          input: testCase.input_data ?? "",
-          expectedOutput,
-          actualOutput,
-          stderr: runResult.stderr,
-          executionTimeMs: runResult.executionTimeMs,
-          isSample: Boolean(testCase.is_sample)
-        });
-
-        return {
-          status: "wrong_answer",
-          errorType: "wrong_answer",
-          verdictLabel: verdictLabelFromErrorType("wrong_answer"),
-          passedTestCases,
-          totalTestCases: testCases.length,
-          executionTimeMs: totalExecutionTimeMs,
-          memoryKb: null,
-          stdout: runResult.stdout,
-          stderr: runResult.stderr,
-          testCaseResults,
-          compilerOutput: buildFeedback({
-            stage: "run",
-            passedTestCases,
-            totalTestCases: testCases.length,
-            stdout: `Expected:\n${expectedOutput || "(empty)"}\n\nActual:\n${actualOutput || "(empty)"}`,
-            stderr: runResult.stderr
-          })
-        };
-      }
-
-      passedTestCases += 1;
-      testCaseResults.push({
-        id: testCase.id,
-        passed: true,
-        input: testCase.input_data ?? "",
-        expectedOutput,
-        actualOutput,
-        stderr: runResult.stderr,
-        executionTimeMs: runResult.executionTimeMs,
-        isSample: Boolean(testCase.is_sample)
-      });
-    }
+    const finalFeedback = buildFeedback({
+      stage: "run",
+      passedTestCases,
+      totalTestCases: casesToRun.length,
+      stdout: overallErrorType === "wrong_answer"
+        ? `Expected:\n${testCaseResults.find(r => !r.passed)?.expectedOutput || ""}\n\nActual:\n${testCaseResults.find(r => !r.passed)?.actualOutput || ""}`
+        : stdout,
+      stderr: stderr || compileOutput || statusDescription
+    });
 
     return {
-      status: "accepted",
-      errorType: null,
-      verdictLabel: verdictLabelFromErrorType(null),
-      passedTestCases: testCases.length,
-      totalTestCases: testCases.length,
+      status: overallStatus,
+      errorType: overallErrorType,
+      verdictLabel: verdictLabelFromErrorType(overallErrorType),
+      passedTestCases,
+      totalTestCases: casesToRun.length,
       executionTimeMs: totalExecutionTimeMs,
-      memoryKb: null,
-      stdout: "All test cases passed.",
-      stderr: "",
+      memoryKb: maxMemoryKb || null,
+      stdout,
+      stderr: stderr || compileOutput || statusDescription,
       testCaseResults,
-      compilerOutput: buildFeedback({
-        stage: "run",
-        passedTestCases: testCases.length,
-        totalTestCases: testCases.length,
-        stdout: "All test cases passed."
-      })
+      compilerOutput: finalFeedback
     };
-  } finally {
-    await rm(tempDir, { recursive: true, force: true });
   }
+
+  return {
+    status: "accepted",
+    errorType: null,
+    verdictLabel: "Accepted",
+    passedTestCases: casesToRun.length,
+    totalTestCases: casesToRun.length,
+    executionTimeMs: totalExecutionTimeMs,
+    memoryKb: maxMemoryKb || null,
+    stdout: "All test cases passed.",
+    stderr: "",
+    testCaseResults,
+    compilerOutput: buildFeedback({
+      stage: "run",
+      passedTestCases: casesToRun.length,
+      totalTestCases: casesToRun.length,
+      stdout: "All test cases passed."
+    })
+  };
 }

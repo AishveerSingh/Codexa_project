@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { PlatformLayout, PlatformSection, PlatformStats } from "../../components/PlatformLayout";
-import { getAdminSession, getAuthHeaders } from "../../utils/session";
+import { clearAdminSession, getAdminSession, getAuthHeaders } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function AdminStudentSubmissions() {
   const { studentId } = useParams();
+  const navigate = useNavigate();
   const session = getAdminSession();
   const [student, setStudent] = useState(null);
   const [problems, setProblems] = useState([]);
@@ -24,6 +25,24 @@ export default function AdminStudentSubmissions() {
     loading: true,
     error: ""
   });
+
+  function handleExpiredAdminSession(message = "Your admin session expired. Please log in again.") {
+    clearAdminSession();
+    setStudent(null);
+    setSubmissions([]);
+    setStudentStatus({
+      loading: false,
+      error: message
+    });
+    setSubmissionStatus({
+      loading: false,
+      error: message
+    });
+
+    window.setTimeout(() => {
+      navigate("/admin/login");
+    }, 300);
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -48,6 +67,11 @@ export default function AdminStudentSubmissions() {
         const data = await response.json();
 
         if (!response.ok) {
+          if (response.status === 401) {
+            handleExpiredAdminSession(data.message || "Your admin session expired. Please log in again.");
+            return;
+          }
+
           throw new Error(data.message || "Unable to load student.");
         }
 
@@ -133,6 +157,11 @@ export default function AdminStudentSubmissions() {
         const data = await response.json();
 
         if (!response.ok) {
+          if (response.status === 401) {
+            handleExpiredAdminSession(data.message || "Your admin session expired. Please log in again.");
+            return;
+          }
+
           throw new Error(data.message || "Unable to load submissions.");
         }
 

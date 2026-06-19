@@ -9,6 +9,17 @@ const initialEditor = {
 };
 const editorDraftStorageKey = "coding_platform_problem_drafts";
 const problemTimerStorageKey = "coding_platform_problem_timers";
+const initialTimerState = {
+  isRunning: false,
+  startedAt: 0,
+  elapsedBeforePause: 0
+};
+const initialToastState = {
+  visible: false,
+  type: "success",
+  title: "",
+  message: ""
+};
 const pairedCharacters = {
   "(": ")",
   "{": "}",
@@ -340,7 +351,20 @@ export default function StudentProblemDetails() {
   const [editorFontSize, setEditorFontSize] = useState(15);
   const [isDraftReady, setIsDraftReady] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [timerState, setTimerState] = useState(initialTimerState);
+  const [showRunDetails, setShowRunDetails] = useState(false);
+  const [showSubmissionDetails, setShowSubmissionDetails] = useState(false);
+  const [toast, setToast] = useState(initialToastState);
   const latestSubmission = submissionHistory[0] ?? null;
+
+  function showToast(type, title, message) {
+    setToast({
+      visible: true,
+      type,
+      title,
+      message
+    });
+  }
 
   useEffect(() => {
     setIsDraftReady(false);
@@ -500,7 +524,26 @@ export default function StudentProblemDetails() {
     setSubmissionMessage("");
     setLatestSubmitResults([]);
     setLatestSubmitExecution(null);
+    setShowRunDetails(false);
+    setShowSubmissionDetails(false);
   }, [problemId]);
+
+  useEffect(() => {
+    if (!toast.visible) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setToast((currentToast) => ({
+        ...currentToast,
+        visible: false
+      }));
+    }, 2600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [toast.visible]);
 
   useEffect(() => {
     if (!problemId) {
@@ -508,16 +551,37 @@ export default function StudentProblemDetails() {
     }
 
     const savedTimers = JSON.parse(localStorage.getItem(problemTimerStorageKey) || "{}");
-    let startedAt = savedTimers[problemId];
+    const savedTimer = savedTimers[problemId];
+    const normalizedTimer =
+      savedTimer && typeof savedTimer === "object"
+        ? {
+            isRunning: savedTimer.isRunning ?? false,
+            startedAt: savedTimer.startedAt ?? 0,
+            elapsedBeforePause: savedTimer.elapsedBeforePause ?? 0
+          }
+        : {
+            isRunning: false,
+            startedAt: 0,
+            elapsedBeforePause: typeof savedTimer === "number" ? savedTimer : 0
+          };
 
-    if (!startedAt) {
-      startedAt = Date.now();
-      savedTimers[problemId] = startedAt;
+    if (!savedTimer) {
+      savedTimers[problemId] = normalizedTimer;
       localStorage.setItem(problemTimerStorageKey, JSON.stringify(savedTimers));
     }
 
+    setTimerState(normalizedTimer);
+
     const updateElapsed = () => {
-      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+      if (!normalizedTimer.isRunning) {
+        setElapsedSeconds(normalizedTimer.elapsedBeforePause);
+        return;
+      }
+
+      setElapsedSeconds(
+        normalizedTimer.elapsedBeforePause +
+          Math.max(0, Math.floor((Date.now() - normalizedTimer.startedAt) / 1000))
+      );
     };
 
     updateElapsed();
@@ -527,6 +591,26 @@ export default function StudentProblemDetails() {
       window.clearInterval(timerId);
     };
   }, [problemId]);
+
+  useEffect(() => {
+    if (!problemId) {
+      return;
+    }
+
+    const savedTimers = JSON.parse(localStorage.getItem(problemTimerStorageKey) || "{}");
+    savedTimers[problemId] = timerState;
+    localStorage.setItem(problemTimerStorageKey, JSON.stringify(savedTimers));
+
+    if (!timerState.isRunning) {
+      setElapsedSeconds(timerState.elapsedBeforePause);
+      return;
+    }
+
+    setElapsedSeconds(
+      timerState.elapsedBeforePause +
+        Math.max(0, Math.floor((Date.now() - timerState.startedAt) / 1000))
+    );
+  }, [problemId, timerState]);
 
   function updateSuggestionState(sourceCode, cursorPosition, language) {
     const suggestionResult = buildSuggestions(sourceCode, cursorPosition, language);
@@ -567,10 +651,16 @@ export default function StudentProblemDetails() {
     }
 
     const selectedSuggestion = suggestionState.suggestions[index];
-    const before = editor.sourceCode.slice(0, suggestionState.wordStart);
+    let before = editor.sourceCode.slice(0, suggestionState.wordStart);
     const after = editor.sourceCode.slice(textarea.selectionStart);
-    const nextSourceCode = `${before}${selectedSuggestion.insertText}${after}`;
-    const nextCursorPosition = before.length + selectedSuggestion.insertText.length;
+    const insertText = selectedSuggestion.insertText;
+
+    if (before.endsWith("#") && insertText.startsWith("#")) {
+      before = before.slice(0, -1);
+    }
+
+    const nextSourceCode = `${before}${insertText}${after}`;
+    const nextCursorPosition = before.length + insertText.length;
 
     applyEditorValue(nextSourceCode, nextCursorPosition);
   }
@@ -729,6 +819,17 @@ export default function StudentProblemDetails() {
       setLatestExecutionDetails(data.submission.compiler_output || "");
       setLatestSubmitResults(data.testCaseResults || []);
       setLatestSubmitExecution(data.execution || null);
+      setShowSubmissionDetails(true);
+
+      if (data.submission?.status === "accepted") {
+        showToast("success", "Accepted", "Submission passed hidden test cases.");
+      } else {
+        showToast(
+          "error",
+          data.execution?.verdictLabel || "Submission failed",
+          "Check the submission panel for detailed feedback."
+        );
+      }
     } catch (error) {
       setSubmissionMessage(error.message);
     } finally {
@@ -774,6 +875,17 @@ export default function StudentProblemDetails() {
       setRunMessage(
         formatExecutionMessage(data.result, "Run completed on sample test cases.")
       );
+      setShowRunDetails(true);
+
+      if (data.result?.status === "accepted") {
+        showToast("success", "Accepted", "All visible test cases passed.");
+      } else {
+        showToast(
+          "error",
+          data.result?.verdictLabel || "Run failed",
+          "Open the test cases below to review the failure."
+        );
+      }
     } catch (error) {
       setRunMessage(error.message);
     } finally {
@@ -787,6 +899,41 @@ export default function StudentProblemDetails() {
       .padStart(2, "0");
     const seconds = (totalSeconds % 60).toString().padStart(2, "0");
     return `${minutes}:${seconds}`;
+  }
+
+  function handleTimerStart() {
+    setTimerState((currentTimerState) => {
+      if (currentTimerState.isRunning) {
+        return currentTimerState;
+      }
+
+      return {
+        isRunning: true,
+        startedAt: Date.now(),
+        elapsedBeforePause: currentTimerState.elapsedBeforePause
+      };
+    });
+  }
+
+  function handleTimerPause() {
+    setTimerState((currentTimerState) => {
+      if (!currentTimerState.isRunning) {
+        return currentTimerState;
+      }
+
+      return {
+        isRunning: false,
+        startedAt: currentTimerState.startedAt,
+        elapsedBeforePause:
+          currentTimerState.elapsedBeforePause +
+          Math.max(0, Math.floor((Date.now() - currentTimerState.startedAt) / 1000))
+      };
+    });
+  }
+
+  function handleTimerReset() {
+    setTimerState(initialTimerState);
+    setElapsedSeconds(0);
   }
 
   const currentProblemIndex = problemOrder.findIndex((entry) => entry.id === problemId);
@@ -811,8 +958,6 @@ export default function StudentProblemDetails() {
     ? "success"
     : "error";
   const runMessageClassName = runResults?.status === "accepted" ? "success" : "error";
-  const latestFailedHiddenCase =
-    latestSubmitResults.find((testCaseResult) => !testCaseResult.passed) ?? null;
   const latestRunErrorType = runResults?.errorType
     ? runResults.errorType.replaceAll("_", " ")
     : "none";
@@ -822,6 +967,12 @@ export default function StudentProblemDetails() {
 
   return (
     <main className="detail-page student-detail-page">
+      {toast.visible ? (
+        <div className={`workspace-toast workspace-toast-${toast.type}`} role="status" aria-live="polite">
+          <strong>{toast.title}</strong>
+          <span>{toast.message}</span>
+        </div>
+      ) : null}
       <section className="detail-card student-detail-card student-workspace-card">
         <div className="workspace-topbar">
           <div className="workspace-topbar-copy">
@@ -836,7 +987,32 @@ export default function StudentProblemDetails() {
             </p>
           </div>
           <div className="workspace-nav-cluster">
-            <span className="workspace-timer-chip">Timer {formatElapsedTime(elapsedSeconds)}</span>
+            <span className={`workspace-timer-chip ${timerState.isRunning ? "" : "paused"}`}>
+              Timer {formatElapsedTime(elapsedSeconds)}
+            </span>
+            <button
+              className="workspace-timer-toggle"
+              type="button"
+              onClick={handleTimerStart}
+              disabled={timerState.isRunning}
+            >
+              Start
+            </button>
+            <button
+              className="workspace-timer-toggle"
+              type="button"
+              onClick={handleTimerPause}
+              disabled={!timerState.isRunning}
+            >
+              Pause
+            </button>
+            <button
+              className="workspace-timer-toggle workspace-timer-reset"
+              type="button"
+              onClick={handleTimerReset}
+            >
+              Reset
+            </button>
             <Link
               className={`workspace-arrow ${previousProblem ? "" : "disabled"}`}
               to={previousProblem ? `/student/problems/${previousProblem.id}` : "#"}
@@ -1195,72 +1371,84 @@ export default function StudentProblemDetails() {
                   </p>
                 ) : (
                   <>
-                    <div className="workspace-result-overview testcase-overview">
-                      <article className="workspace-result-card">
-                        <span>Run verdict</span>
-                        <strong>{runResults.verdictLabel || runResults.status.replaceAll("_", " ")}</strong>
-                      </article>
-                      <article className="workspace-result-card">
-                        <span>Passed</span>
-                        <strong>
-                          {runResults.passedTestCases}/{runResults.totalTestCases}
-                        </strong>
-                      </article>
-                      <article className="workspace-result-card">
-                        <span>Error type</span>
-                        <strong>{latestRunErrorType}</strong>
-                      </article>
-                      <article className="workspace-result-card">
-                        <span>Runtime</span>
-                        <strong>{runResults.executionTimeMs ?? "-"} ms</strong>
-                      </article>
-                    </div>
+                    <button
+                      className="workspace-disclosure-button"
+                      type="button"
+                      onClick={() => setShowRunDetails((currentValue) => !currentValue)}
+                    >
+                      {showRunDetails ? "Hide test case details" : "Open test case details"}
+                    </button>
 
-                    <div className="sample-case-list testcase-result-list">
-                      {(runResults.testCaseResults || []).map((testCaseResult, index) => (
-                        <article className="sample-case-card testcase-result-card" key={testCaseResult.id || index}>
-                          <div className="sample-case-header">
-                            <strong>Test case {index + 1}</strong>
-                            <span
-                              className={`status-pill ${
-                                testCaseResult.passed ? "accepted" : "wrong_answer"
-                              }`}
-                            >
-                              {testCaseResult.passed ? "passed" : "failed"}
-                            </span>
-                          </div>
-                          <div className="sample-case-block">
-                            <span>Input</span>
-                            <p className="history-snippet">{testCaseResult.input || "(empty)"}</p>
-                          </div>
-                          <div className="sample-case-block">
-                            <span>Expected output</span>
-                            <p className="history-snippet">{testCaseResult.expectedOutput || "(empty)"}</p>
-                          </div>
-                          <div className="sample-case-block">
-                            <span>Your output</span>
-                            <p className="history-snippet">{testCaseResult.actualOutput || "(empty)"}</p>
-                          </div>
-                          {testCaseResult.stderr ? (
-                            <div className="sample-case-block">
-                              <span>Error output</span>
-                              <p className="history-snippet">{testCaseResult.stderr}</p>
-                            </div>
-                          ) : null}
-                        </article>
-                      ))}
-                    </div>
-
-                    {runResults.stderr ? (
-                      <div className="workspace-subsection">
-                        <div className="workspace-section-heading">
-                          <h3>Run error output</h3>
-                          <span className="workspace-section-tag">
-                            {runResults.verdictLabel || "Execution error"}
-                          </span>
+                    {showRunDetails ? (
+                      <>
+                        <div className="workspace-result-overview testcase-overview">
+                          <article className="workspace-result-card">
+                            <span>Run verdict</span>
+                            <strong>{runResults.verdictLabel || runResults.status.replaceAll("_", " ")}</strong>
+                          </article>
+                          <article className="workspace-result-card">
+                            <span>Passed</span>
+                            <strong>
+                              {runResults.passedTestCases}/{runResults.totalTestCases}
+                            </strong>
+                          </article>
+                          <article className="workspace-result-card">
+                            <span>Error type</span>
+                            <strong>{latestRunErrorType}</strong>
+                          </article>
+                          <article className="workspace-result-card">
+                            <span>Runtime</span>
+                            <strong>{runResults.executionTimeMs ?? "-"} ms</strong>
+                          </article>
                         </div>
-                        <pre className="history-snippet workspace-console-output">{runResults.stderr}</pre>
-                      </div>
+
+                        <div className="sample-case-list testcase-result-list">
+                          {(runResults.testCaseResults || []).map((testCaseResult, index) => (
+                            <article className="sample-case-card testcase-result-card" key={testCaseResult.id || index}>
+                              <div className="sample-case-header">
+                                <strong>Test case {index + 1}</strong>
+                                <span
+                                  className={`status-pill ${
+                                    testCaseResult.passed ? "accepted" : "wrong_answer"
+                                  }`}
+                                >
+                                  {testCaseResult.passed ? "accepted" : "failed"}
+                                </span>
+                              </div>
+                              <div className="sample-case-block">
+                                <span>Input</span>
+                                <p className="history-snippet">{testCaseResult.input || "(empty)"}</p>
+                              </div>
+                              <div className="sample-case-block">
+                                <span>Expected output</span>
+                                <p className="history-snippet">{testCaseResult.expectedOutput || "(empty)"}</p>
+                              </div>
+                              <div className="sample-case-block">
+                                <span>Your output</span>
+                                <p className="history-snippet">{testCaseResult.actualOutput || "(empty)"}</p>
+                              </div>
+                              {testCaseResult.stderr ? (
+                                <div className="sample-case-block">
+                                  <span>Error output</span>
+                                  <p className="history-snippet">{testCaseResult.stderr}</p>
+                                </div>
+                              ) : null}
+                            </article>
+                          ))}
+                        </div>
+
+                        {runResults.stderr ? (
+                          <div className="workspace-subsection">
+                            <div className="workspace-section-heading">
+                              <h3>Run error output</h3>
+                              <span className="workspace-section-tag">
+                                {runResults.verdictLabel || "Execution error"}
+                              </span>
+                            </div>
+                            <pre className="history-snippet workspace-console-output">{runResults.stderr}</pre>
+                          </div>
+                        ) : null}
+                      </>
                     ) : null}
                   </>
                 )}
@@ -1281,37 +1469,49 @@ export default function StudentProblemDetails() {
                 {historyStatus.loading ? <p className="dashboard-copy">Loading submission history...</p> : null}
                 {historyStatus.error ? <p className="form-status error">{historyStatus.error}</p> : null}
 
-                <div className="workspace-result-overview">
-                  <article className="workspace-result-card">
-                    <span>Latest verdict</span>
-                    <strong>
-                      {latestSubmitExecution?.verdictLabel ||
-                        (latestSubmission ? latestSubmission.status.replaceAll("_", " ") : "No runs yet")}
-                    </strong>
-                  </article>
-                  <article className="workspace-result-card">
-                    <span>Passed tests</span>
-                    <strong>
-                      {latestSubmission
-                        ? `${latestSubmission.passed_test_cases}/${latestSubmission.total_test_cases}`
-                        : "-/-"}
-                    </strong>
-                  </article>
-                  <article className="workspace-result-card">
-                    <span>Failed tests</span>
-                    <strong>{latestSubmission ? failedTestCount : "-"}</strong>
-                  </article>
-                  <article className="workspace-result-card">
-                    <span>Error type</span>
-                    <strong>{latestSubmission ? latestSubmitErrorType : "-"}</strong>
-                  </article>
-                  <article className="workspace-result-card">
-                    <span>Runtime</span>
-                    <strong>{latestSubmission ? `${latestSubmission.execution_time_ms ?? "-"} ms` : "-"}</strong>
-                  </article>
-                </div>
+                {submissionHistory.length > 0 ? (
+                  <button
+                    className="workspace-disclosure-button"
+                    type="button"
+                    onClick={() => setShowSubmissionDetails((currentValue) => !currentValue)}
+                  >
+                    {showSubmissionDetails ? "Hide submission details" : "Open submission details"}
+                  </button>
+                ) : null}
 
-                {latestExecutionDetails ? (
+                {showSubmissionDetails ? (
+                  <div className="workspace-result-overview">
+                    <article className="workspace-result-card">
+                      <span>Latest verdict</span>
+                      <strong>
+                        {latestSubmitExecution?.verdictLabel ||
+                          (latestSubmission ? latestSubmission.status.replaceAll("_", " ") : "No runs yet")}
+                      </strong>
+                    </article>
+                    <article className="workspace-result-card">
+                      <span>Passed tests</span>
+                      <strong>
+                        {latestSubmission
+                          ? `${latestSubmission.passed_test_cases}/${latestSubmission.total_test_cases}`
+                          : "-/-"}
+                      </strong>
+                    </article>
+                    <article className="workspace-result-card">
+                      <span>Failed tests</span>
+                      <strong>{latestSubmission ? failedTestCount : "-"}</strong>
+                    </article>
+                    <article className="workspace-result-card">
+                      <span>Error type</span>
+                      <strong>{latestSubmission ? latestSubmitErrorType : "-"}</strong>
+                    </article>
+                    <article className="workspace-result-card">
+                      <span>Runtime</span>
+                      <strong>{latestSubmission ? `${latestSubmission.execution_time_ms ?? "-"} ms` : "-"}</strong>
+                    </article>
+                  </div>
+                ) : null}
+
+                {showSubmissionDetails && latestExecutionDetails ? (
                   <div className="workspace-subsection workspace-result-log">
                     <div className="workspace-section-heading">
                       <h3>Latest execution log</h3>
@@ -1321,7 +1521,7 @@ export default function StudentProblemDetails() {
                   </div>
                 ) : null}
 
-                {latestSubmitExecution?.stderr ? (
+                {showSubmissionDetails && latestSubmitExecution?.stderr ? (
                   <div className="workspace-subsection">
                     <div className="workspace-section-heading">
                       <h3>Error output</h3>
@@ -1333,43 +1533,13 @@ export default function StudentProblemDetails() {
                   </div>
                 ) : null}
 
-                {latestFailedHiddenCase ? (
-                  <div className="workspace-subsection">
-                    <div className="workspace-section-heading">
-                      <h3>Hidden testcase comparison</h3>
-                      <span className="workspace-section-tag">Expected vs your output</span>
-                    </div>
-                    <div className="sample-case-list testcase-result-list">
-                      <article className="sample-case-card testcase-result-card">
-                        <div className="sample-case-header">
-                          <strong>First failed hidden case</strong>
-                          <span className="status-pill wrong_answer">failed</span>
-                        </div>
-                        <div className="sample-case-block">
-                          <span>Input</span>
-                          <p className="history-snippet">(hidden input)</p>
-                        </div>
-                        <div className="sample-case-block">
-                          <span>Expected output</span>
-                          <p className="history-snippet">
-                            {latestFailedHiddenCase.expectedOutput || "(empty)"}
-                          </p>
-                        </div>
-                        <div className="sample-case-block">
-                          <span>Your output</span>
-                          <p className="history-snippet">
-                            {latestFailedHiddenCase.actualOutput || "(empty)"}
-                          </p>
-                        </div>
-                      </article>
-                    </div>
-                  </div>
-                ) : null}
-
                 {!historyStatus.loading && !historyStatus.error && submissionHistory.length === 0 ? (
                   <p className="dashboard-copy">No submissions yet. Send your first solution above.</p>
                 ) : null}
-                {!historyStatus.loading && !historyStatus.error && submissionHistory.length > 0 ? (
+                {!historyStatus.loading &&
+                !historyStatus.error &&
+                submissionHistory.length > 0 &&
+                showSubmissionDetails ? (
                   <div className="history-list workspace-history-list">
                     {submissionHistory.map((submission) => (
                       <article className="history-card workspace-history-card" key={submission.id}>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { PlatformLayout, PlatformSection, PlatformStats } from "../../components/PlatformLayout";
-import { getAdminSession, getAuthHeaders } from "../../utils/session";
+import { clearAdminSession, getAdminSession, getAuthHeaders } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function AdminStudentList() {
+  const navigate = useNavigate();
   const session = getAdminSession();
   const [students, setStudents] = useState([]);
   const [filters, setFilters] = useState({
@@ -15,6 +16,19 @@ export default function AdminStudentList() {
     loading: true,
     error: ""
   });
+
+  function handleExpiredAdminSession(message = "Your admin session expired. Please log in again.") {
+    clearAdminSession();
+    setStudents([]);
+    setStatus({
+      loading: false,
+      error: message
+    });
+
+    window.setTimeout(() => {
+      navigate("/admin/login");
+    }, 300);
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -53,6 +67,11 @@ export default function AdminStudentList() {
         const data = await response.json();
 
         if (!response.ok) {
+          if (response.status === 401) {
+            handleExpiredAdminSession(data.message || "Your admin session expired. Please log in again.");
+            return;
+          }
+
           throw new Error(data.message || "Unable to load students.");
         }
 

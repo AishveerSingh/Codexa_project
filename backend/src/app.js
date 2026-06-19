@@ -7,9 +7,24 @@ import mainRouter from "./routes/mainroutes.js";
 
 const app = express();
 
+const allowedOrigins = new Set(env.clientUrls);
+
 app.use(
   cors({
-    origin: env.clientUrl
+    origin(origin, callback) {
+      // Allow same-server tools, health checks, curl, and non-browser requests.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    }
   })
 );
 app.use(helmet());

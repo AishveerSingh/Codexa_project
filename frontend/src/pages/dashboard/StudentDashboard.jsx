@@ -40,6 +40,7 @@ export default function StudentDashboard() {
     loading: Boolean(user?.id),
     error: ""
   });
+  const profile = user?.profile || null;
 
   function getProgressPercent(entry) {
     if (!entry.total_submissions) {
@@ -106,14 +107,19 @@ export default function StudentDashboard() {
       title={user ? `Welcome back, ${user.full_name}.` : "Student workspace"}
       subtitle={
         user
-          ? `Track your practice, monitor acceptance rate, and jump into the next problem faster. Signed in as ${user.email}.`
+          ? `${profile?.branch || "Branch"} | Semester ${profile?.semester || "-"} | Section ${profile?.section || "-"} | Roll No. ${profile?.roll_number || "-"}. Signed in as ${user.email}.`
           : "Open the student login page to register or sign in."
       }
-      meta="Practice Mode"
+      meta="Student Portal"
       actions={
-        <Link className="auth-button student-button panel-action-button" to="/student/problems">
-          Solve problems
-        </Link>
+        <>
+          <Link className="auth-button student-button panel-action-button" to="/student/courses">
+            Open courses
+          </Link>
+          <Link className="auth-button ghost-button panel-action-button" to="/student/problems">
+            Solve problems
+          </Link>
+        </>
       }
       sidebarNote="Use this area like a coding platform hub: open the problem set, keep an eye on your success rate, and return often to build momentum."
     >
@@ -125,17 +131,32 @@ export default function StudentDashboard() {
             note: "Unique problems cleared"
           },
           {
+            label: "Section",
+            value: profile?.section || "-",
+            note: profile?.batch ? `Batch ${profile.batch}` : "Assigned section"
+          },
+          {
             label: "Accepted runs",
             value: progress.reduce((sum, entry) => sum + (entry.accepted_submissions || 0), 0),
             note: "Successful submissions"
-          },
-          {
-            label: "Total attempts",
-            value: progress.reduce((sum, entry) => sum + (entry.total_submissions || 0), 0),
-            note: "Across every difficulty"
           }
         ]}
       />
+
+      <PlatformSection
+        label="Assigned Courses"
+        title="Open your semester and batch courses"
+        actions={
+          <Link className="auth-button student-button panel-action-button" to="/student/courses">
+            View courses
+          </Link>
+        }
+      >
+        <p className="dashboard-copy">
+          Your courses are filtered by branch, semester, section, and batch so the portal behaves
+          more like a college LMS than a generic coding site.
+        </p>
+      </PlatformSection>
 
       <PlatformSection
         label="Problem Set"

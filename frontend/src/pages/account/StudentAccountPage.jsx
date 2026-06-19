@@ -6,6 +6,7 @@ import { getStudentSession, saveStudentSession } from "../../utils/session";
 export default function StudentAccountPage() {
   const session = getStudentSession();
   const user = session?.user;
+  const profile = user?.profile || null;
 
   return (
     <PlatformLayout
@@ -13,7 +14,7 @@ export default function StudentAccountPage() {
       eyebrow="Account Settings"
       title={user ? `${user.full_name}'s profile` : "Student account"}
       subtitle="Manage your personal details and password from a dedicated account page instead of mixing it into the practice dashboard."
-      meta="Profile Settings"
+      meta="Student Profile"
       actions={
         <Link className="auth-button student-button panel-action-button" to="/student/dashboard">
           Back to dashboard
@@ -29,22 +30,27 @@ export default function StudentAccountPage() {
             note: "Student profile name"
           },
           {
-            label: "Email",
-            value: user?.email || "-",
-            note: "Current sign-in email"
+            label: "Roll number",
+            value: profile?.roll_number || "-",
+            note: "Institute identifier"
           },
           {
-            label: "Role",
-            value: user?.role || "student",
-            note: "Access type"
+            label: "Branch",
+            value: profile?.branch || "-",
+            note: `Semester ${profile?.semester || "-"}`
+          },
+          {
+            label: "Section",
+            value: profile?.section || "-",
+            note: profile?.batch ? `Batch ${profile.batch}` : "Academic section"
           }
         ]}
       />
 
       <PlatformSection label="Profile" title="Student account overview">
         <p className="dashboard-copy">
-          Like other coding platforms, this page is dedicated to your account settings rather than
-          problem-solving. Update your identity details or change your password here.
+          This page keeps your academic identity visible the way a campus coding portal usually
+          does, while keeping profile edits and password management separate from daily practice.
         </p>
       </PlatformSection>
 

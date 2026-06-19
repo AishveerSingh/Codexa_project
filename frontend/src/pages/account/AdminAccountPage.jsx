@@ -13,7 +13,7 @@ export default function AdminAccountPage() {
       eyebrow="Account Settings"
       title={user ? `${user.full_name}'s admin profile` : "Admin account"}
       subtitle="Manage admin identity details and password from a dedicated settings page, more like the account areas on established coding platforms."
-      meta="Admin Settings"
+      meta="Admin Profile"
       actions={
         <Link className="auth-button admin-button panel-action-button" to="/admin/dashboard">
           Back to dashboard

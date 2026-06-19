@@ -2,6 +2,23 @@ import { pool } from "../config/db.js";
 import { hashPassword, signAuthToken, verifyPassword } from "../utils/auth.js";
 
 function sanitizeUser(row) {
+  const profile =
+    row.role === "student"
+      ? {
+          roll_number: row.roll_number || null,
+          branch: row.branch || null,
+          semester: row.semester || null,
+          section: row.section || null,
+          batch: row.batch || null
+        }
+      : row.role === "faculty"
+        ? {
+            employee_id: row.employee_id || null,
+            department: row.department || null,
+            designation: row.designation || null
+          }
+        : null;
+
   return {
     id: row.id,
     full_name: row.full_name,
@@ -9,7 +26,8 @@ function sanitizeUser(row) {
     role: row.role,
     created_at: row.created_at,
     submission_count: row.submission_count,
-    accepted_count: row.accepted_count
+    accepted_count: row.accepted_count,
+    profile
   };
 }
 
@@ -23,11 +41,30 @@ async function fetchUserSummary(userId) {
         u.role,
         u.created_at,
         COUNT(s.id)::int AS submission_count,
-        COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count
+        COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count,
+        sp.roll_number,
+        sp.branch,
+        sp.semester,
+        sp.section,
+        sp.batch,
+        fp.employee_id,
+        fp.department,
+        fp.designation
       FROM users u
+      LEFT JOIN student_profiles sp ON sp.user_id = u.id
+      LEFT JOIN faculty_profiles fp ON fp.user_id = u.id
       LEFT JOIN submissions s ON s.student_id = u.id
       WHERE u.id = $1
-      GROUP BY u.id
+      GROUP BY
+        u.id,
+        sp.roll_number,
+        sp.branch,
+        sp.semester,
+        sp.section,
+        sp.batch,
+        fp.employee_id,
+        fp.department,
+        fp.designation
     `,
     [userId]
   );
@@ -36,7 +73,19 @@ async function fetchUserSummary(userId) {
 }
 
 async function registerUser(req, res, next, role) {
-  const { fullName, email, password } = req.body;
+  const {
+    fullName,
+    email,
+    password,
+    rollNumber,
+    branch,
+    semester,
+    section,
+    batch,
+    employeeId,
+    department,
+    designation
+  } = req.body;
 
   if (!fullName?.trim() || !email?.trim() || !password?.trim()) {
     return res.status(400).json({
@@ -47,6 +96,21 @@ async function registerUser(req, res, next, role) {
   if (password.trim().length < 8) {
     return res.status(400).json({
       message: "Password must be at least 8 characters long."
+    });
+  }
+
+  if (
+    role === "student" &&
+    (!rollNumber?.trim() || !branch?.trim() || !semester || !section?.trim() || !batch?.trim())
+  ) {
+    return res.status(400).json({
+      message: "Student registration requires roll number, branch, semester, section, and batch."
+    });
+  }
+
+  if (role === "faculty" && (!employeeId?.trim() || !department?.trim())) {
+    return res.status(400).json({
+      message: "Faculty registration requires employee ID and department."
     });
   }
 
@@ -84,11 +148,11 @@ async function registerUser(req, res, next, role) {
           [normalizedName, passwordHash, role, existing.id]
         );
 
-        const user = upgradedUser.rows[0];
-        const token = signAuthToken(user);
+        const user = await fetchUserSummary(upgradedUser.rows[0].id);
+        const token = signAuthToken(upgradedUser.rows[0]);
 
         return res.status(201).json({
-          message: `${role === "admin" ? "Admin" : "Student"} account secured successfully.`,
+          message: `${role === "admin" ? "Admin" : role === "faculty" ? "Faculty" : "Student"} account secured successfully.`,
           token,
           user
         });
@@ -99,23 +163,64 @@ async function registerUser(req, res, next, role) {
       });
     }
 
-    const result = await pool.query(
-      `
-        INSERT INTO users (full_name, email, password_hash, role)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, full_name, email, role, created_at
-      `,
-      [normalizedName, normalizedEmail, passwordHash, role]
-    );
+    const client = await pool.connect();
 
-    const user = result.rows[0];
-    const token = signAuthToken(user);
+    try {
+      await client.query("BEGIN");
 
-    res.status(201).json({
-      message: `${role === "admin" ? "Admin" : "Student"} account created successfully.`,
-      token,
-      user
-    });
+      const result = await client.query(
+        `
+          INSERT INTO users (full_name, email, password_hash, role)
+          VALUES ($1, $2, $3, $4)
+          RETURNING id, full_name, email, role, created_at
+        `,
+        [normalizedName, normalizedEmail, passwordHash, role]
+      );
+
+      const user = result.rows[0];
+
+      if (role === "student") {
+        await client.query(
+          `
+            INSERT INTO student_profiles (user_id, roll_number, branch, semester, section, batch)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+          [
+            user.id,
+            rollNumber.trim(),
+            branch.trim().toUpperCase(),
+            Number(semester),
+            section.trim().toUpperCase(),
+            batch.trim()
+          ]
+        );
+      }
+
+      if (role === "faculty") {
+        await client.query(
+          `
+            INSERT INTO faculty_profiles (user_id, employee_id, department, designation)
+            VALUES ($1, $2, $3, $4)
+          `,
+          [user.id, employeeId.trim(), department.trim().toUpperCase(), designation?.trim() || "Faculty"]
+        );
+      }
+
+      await client.query("COMMIT");
+      const createdUser = await fetchUserSummary(user.id);
+      const token = signAuthToken(user);
+
+      res.status(201).json({
+        message: `${role === "admin" ? "Admin" : role === "faculty" ? "Faculty" : "Student"} account created successfully.`,
+        token,
+        user: createdUser
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     next(error);
   }
@@ -163,11 +268,11 @@ async function loginUser(req, res, next, role) {
       });
     }
 
-    const user = sanitizeUser(userRecord);
-    const token = signAuthToken(user);
+    const user = await fetchUserSummary(userRecord.id);
+    const token = signAuthToken(userRecord);
 
     res.json({
-      message: `${role === "admin" ? "Admin" : "Student"} login successful.`,
+      message: `${role === "admin" ? "Admin" : role === "faculty" ? "Faculty" : "Student"} login successful.`,
       token,
       user
     });
@@ -180,9 +285,9 @@ export async function getUsers(req, res, next) {
   const role = req.query.role?.trim().toLowerCase() ?? "";
   const search = req.query.search?.trim() ?? "";
 
-  if (role && !["student", "instructor", "admin"].includes(role)) {
+  if (role && !["student", "faculty", "admin"].includes(role)) {
     return res.status(400).json({
-      message: "Role filter must be student, instructor, or admin."
+      message: "Role filter must be student, faculty, or admin."
     });
   }
 
@@ -197,7 +302,12 @@ export async function getUsers(req, res, next) {
 
     if (search) {
       values.push(`%${search}%`);
-      filters.push(`(u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length})`);
+      filters.push(`(
+        u.full_name ILIKE $${values.length}
+        OR u.email ILIKE $${values.length}
+        OR sp.roll_number ILIKE $${values.length}
+        OR fp.employee_id ILIKE $${values.length}
+      )`);
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
@@ -211,11 +321,30 @@ export async function getUsers(req, res, next) {
           u.role,
           u.created_at,
           COUNT(s.id)::int AS submission_count,
-          COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count
+          COUNT(*) FILTER (WHERE s.status = 'accepted')::int AS accepted_count,
+          sp.roll_number,
+          sp.branch,
+          sp.semester,
+          sp.section,
+          sp.batch,
+          fp.employee_id,
+          fp.department,
+          fp.designation
         FROM users u
+        LEFT JOIN student_profiles sp ON sp.user_id = u.id
+        LEFT JOIN faculty_profiles fp ON fp.user_id = u.id
         LEFT JOIN submissions s ON s.student_id = u.id
         ${whereClause}
-        GROUP BY u.id
+        GROUP BY
+          u.id,
+          sp.roll_number,
+          sp.branch,
+          sp.semester,
+          sp.section,
+          sp.batch,
+          fp.employee_id,
+          fp.department,
+          fp.designation
         ORDER BY u.created_at DESC
       `,
       values
@@ -467,3 +596,10 @@ export async function resetStudentPassword(req, res, next) {
   }
 }
 
+export function registerFaculty(req, res, next) {
+  return registerUser(req, res, next, "faculty");
+}
+
+export function loginFaculty(req, res, next) {
+  return loginUser(req, res, next, "faculty");
+}

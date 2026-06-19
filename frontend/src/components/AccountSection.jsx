@@ -6,6 +6,7 @@ const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function AccountSection({ role, session, saveSession }) {
   const user = session?.user;
+  const profile = user?.profile || null;
   const [profileForm, setProfileForm] = useState({
     fullName: user?.full_name || "",
     email: user?.email || ""
@@ -120,10 +121,71 @@ export default function AccountSection({ role, session, saveSession }) {
     }
   }
 
+  const roleStats =
+    role === "student"
+      ? [
+          {
+            label: "Roll number",
+            value: profile?.roll_number || "-",
+            note: "Institute identifier"
+          },
+          {
+            label: "Branch",
+            value: profile?.branch || "-",
+            note: "Academic department"
+          },
+          {
+            label: "Semester",
+            value: profile?.semester || "-",
+            note: "Current term"
+          }
+        ]
+      : role === "faculty"
+        ? [
+            {
+              label: "Employee ID",
+              value: profile?.employee_id || "-",
+              note: "Institute identifier"
+            },
+            {
+              label: "Department",
+              value: profile?.department || "-",
+              note: "Teaching department"
+            },
+            {
+              label: "Designation",
+              value: profile?.designation || "-",
+              note: "Current role"
+            }
+          ]
+        : [
+            {
+              label: "Role",
+              value: user?.role || role,
+              note: "Current access level"
+            },
+            {
+              label: "Email",
+              value: user?.email || "-",
+              note: "Login email"
+            },
+            {
+              label: "Created",
+              value: user?.created_at ? new Date(user.created_at).toLocaleDateString() : "-",
+              note: "Account start date"
+            }
+          ];
+
   return (
     <PlatformSection
       label="Account"
-      title={role === "admin" ? "Admin details and security" : "Student details and security"}
+      title={
+        role === "admin"
+          ? "Admin details and security"
+          : role === "faculty"
+            ? "Faculty details and security"
+            : "Student details and security"
+      }
       actions={
         <>
           <button
@@ -162,16 +224,7 @@ export default function AccountSection({ role, session, saveSession }) {
             value: user?.full_name || "-",
             note: "Current profile name"
           },
-          {
-            label: "Email",
-            value: user?.email || "-",
-            note: "Login email"
-          },
-          {
-            label: "Role",
-            value: user?.role || role,
-            note: "Current access level"
-          }
+          ...roleStats
         ]}
       />
 

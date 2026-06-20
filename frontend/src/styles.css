@@ -1167,6 +1167,106 @@ a {
   box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
 }
 
+.custom-select {
+  position: relative;
+  flex: 0 1 220px;
+}
+
+.custom-select.filter-select {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.custom-select[open] {
+  z-index: 20;
+}
+
+.custom-select-trigger {
+  display: block;
+  min-height: 50px;
+  padding: 0.95rem 2.9rem 0.95rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #f8fafc;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.custom-select-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.custom-select-trigger::after {
+  content: "";
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.custom-select[open] .custom-select-trigger {
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+}
+
+.custom-select[open] .custom-select-trigger::after {
+  transform: translateY(-25%) rotate(-135deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 0.35rem;
+  max-height: 240px;
+  padding: 0.45rem;
+  overflow-y: auto;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  background: #111827;
+  box-shadow: 0 18px 45px rgba(2, 6, 23, 0.35);
+}
+
+.custom-select-option {
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+}
+
+.custom-select-option:hover,
+.custom-select-option.active {
+  background: rgba(56, 189, 248, 0.16);
+}
+
+.custom-select-empty {
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  color: #94a3b8;
+}
+
+.auth-form select option,
+.filter-select option,
+.editor-toolbar select option {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
 .question-panel-header {
   display: flex;
   justify-content: space-between;
@@ -2301,6 +2401,14 @@ a {
   gap: 0.9rem;
 }
 
+.course-test-case-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
 .course-builder-top-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2816,6 +2924,38 @@ body,
   background: rgba(255, 255, 255, 0.94);
   color: #0f172a;
   border-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-theme="light"] .custom-select-trigger {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-theme="light"] .custom-select-menu {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.28);
+  box-shadow: 0 20px 48px rgba(148, 163, 184, 0.24);
+}
+
+[data-theme="light"] .custom-select-option {
+  color: #0f172a;
+}
+
+[data-theme="light"] .custom-select-option:hover,
+[data-theme="light"] .custom-select-option.active {
+  background: rgba(14, 165, 233, 0.12);
+}
+
+[data-theme="light"] .custom-select-empty {
+  color: #64748b;
+}
+
+[data-theme="light"] .auth-form select option,
+[data-theme="light"] .filter-select option,
+[data-theme="light"] .editor-toolbar select option {
+  background: #ffffff;
+  color: #0f172a;
 }
 
 [data-theme="light"] .auth-form input::placeholder,

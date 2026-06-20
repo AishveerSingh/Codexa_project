@@ -16,10 +16,14 @@ import AdminStudentList from "../pages/admin/AdminStudentList";
 import AdminStudentSubmissions from "../pages/admin/AdminStudentSubmissions";
 import AdminFacultyList from "../pages/admin/AdminFacultyList";
 import AdminCourseManager from "../pages/courses/AdminCourseManager";
+import AdminCourseDetails from "../pages/courses/AdminCourseDetails";
+import AdminCourseProblemDetails from "../pages/courses/AdminCourseProblemDetails";
 import FacultyCourseDetails from "../pages/courses/FacultyCourseDetails";
+import FacultyCourseProblemDetails from "../pages/courses/FacultyCourseProblemDetails";
 import FacultyStudentList from "../pages/faculty/FacultyStudentList";
 import FacultyStudentSubmissions from "../pages/faculty/FacultyStudentSubmissions";
 import StudentCourseDetails from "../pages/courses/StudentCourseDetails";
+import StudentCourseProblemDetails from "../pages/courses/StudentCourseProblemDetails";
 import StudentCourseList from "../pages/courses/StudentCourseList";
 import StudentProblemList from "../pages/problems/StudentProblemList";
 import StudentProblemDetails from "../pages/problems/StudentProblemDetails";
@@ -43,6 +47,7 @@ export default function MainRoutes() {
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/courses" element={<StudentCourseList />} />
       <Route path="/student/courses/:courseId" element={<StudentCourseDetails />} />
+      <Route path="/student/courses/:courseId/problems/:problemId" element={<StudentCourseProblemDetails />} />
       <Route path="/student/account" element={<StudentAccountPage />} />
       <Route path="/student/problems" element={<StudentProblemList />} />
       <Route path="/student/problems/:problemId" element={<StudentProblemDetails />} />
@@ -51,12 +56,15 @@ export default function MainRoutes() {
       <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
       <Route path="/faculty/courses" element={<FacultyDashboard />} />
       <Route path="/faculty/courses/:courseId" element={<FacultyCourseDetails />} />
+      <Route path="/faculty/courses/:courseId/problems/:problemId" element={<FacultyCourseProblemDetails />} />
       <Route path="/faculty/students" element={<FacultyStudentList />} />
       <Route path="/faculty/students/:studentId/submissions" element={<FacultyStudentSubmissions />} />
       <Route path="/faculty/account" element={<FacultyAccountPage />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/courses" element={<AdminCourseManager />} />
+      <Route path="/admin/courses/:courseId" element={<AdminCourseDetails />} />
+      <Route path="/admin/courses/:courseId/problems/:problemId" element={<AdminCourseProblemDetails />} />
       <Route path="/admin/account" element={<AdminAccountPage />} />
       <Route path="/admin/problems/new" element={<AdminProblemCreate />} />
       <Route path="/admin/problems" element={<AdminProblemList />} />

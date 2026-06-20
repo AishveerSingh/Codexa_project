@@ -43,6 +43,7 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api", mainRouter);
+app.use("/", mainRouter);
 
 app.use((req, res) => {
   res.status(404).json({

@@ -97,10 +97,8 @@ export default function MainRoutes() {
       <Route path="/admin/problems" element={<AdminProblemList />} />
       <Route path="/admin/problems/:problemId" element={<AdminProblemDetails />} />
       <Route path="/admin/students" element={<AdminStudentList />} />
-      HEAD
 
       <Route path="/admin/admins" element={<AdminAdminList />} />
-      1abf1cf9b96e7292a82faf80af365cdd829c06ba
       <Route path="/admin/faculty" element={<AdminFacultyList />} />
       <Route path="/admin/students/:studentId/submissions" element={<AdminStudentSubmissions />} />
       <Route path="*" element={<NotFoundPage />} />

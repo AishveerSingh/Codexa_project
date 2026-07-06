@@ -32,7 +32,8 @@ const facultyNavCategories = [
     items: [
       { to: "/faculty/dashboard", label: "Dashboard", icon: "dashboard" },
       { to: "/faculty/courses", label: "Courses", icon: "courses" },
-      { to: "/faculty/students", label: "Students", icon: "users" }
+      { to: "/faculty/students", label: "Students", icon: "users" },
+      { to: "/faculty/problems", label: "Practice", icon: "problems" }
     ]
   },
   {
@@ -56,10 +57,10 @@ const adminNavCategories = [
   {
     title: "MANAGEMENT",
     items: [
-      { to: "/admin/students", label: "Add Student", icon: "add-student" },
+      { to: "/admin/students?tab=add", label: "Add Student", icon: "add-student" },
       { to: "/admin/faculty", label: "Add Faculty", icon: "add-faculty" },
-      { to: "/admin/students", label: "All Submissions", icon: "submissions" },
-      { to: "/admin/dashboard", label: "Analytics", icon: "analytics" }
+      { to: "/admin/students?tab=submissions", label: "All Submissions", icon: "submissions" },
+      { to: "/admin/dashboard?tab=analytics", label: "Analytics", icon: "analytics" }
     ]
   },
   {
@@ -69,6 +70,7 @@ const adminNavCategories = [
     ]
   }
 ];
+
 
 const navCategoriesByRole = {
   student: studentNavCategories,
@@ -165,8 +167,15 @@ function getSidebarIcon(icon) {
   }
 }
 
-function isItemActive(pathname, target) {
-  return pathname === target || pathname.startsWith(`${target}/`);
+function isItemActive(pathname, search, target) {
+  const [targetPath, targetQuery] = target.split("?");
+  if (targetQuery) {
+    return pathname === targetPath && search.includes(targetQuery);
+  }
+  if (pathname === targetPath) {
+    return !search || !search.includes("tab=");
+  }
+  return pathname.startsWith(`${targetPath}/`);
 }
 
 export function PlatformLayout({
@@ -181,6 +190,15 @@ export function PlatformLayout({
   showQuickActions
 }) {
   const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const activeTab = queryParams.get("tab") || "overview";
+
+  const isDashboardOverviewActive = location.pathname === "/admin/dashboard" && activeTab === "overview";
+  const isDashboardAnalyticsActive = location.pathname === "/admin/dashboard" && activeTab === "analytics";
+  const isUsersActive = location.pathname.startsWith("/admin/students");
+  const isCoursesActive = location.pathname.startsWith("/admin/courses");
+  const isProblemsActive = location.pathname.startsWith("/admin/problems");
+
   const navigate = useNavigate();
   const categories = navCategoriesByRole[role] ?? [];
 
@@ -197,7 +215,7 @@ export function PlatformLayout({
     const activeItem = [...items]
       .sort((a, b) => b.to.length - a.to.length)
       .find((item) => {
-        return location.pathname === item.to || location.pathname.startsWith(item.to + "/");
+        return isItemActive(location.pathname, location.search, item.to);
       });
 
     const activeLabel = activeItem ? activeItem.label : title;
@@ -207,7 +225,7 @@ export function PlatformLayout({
     } else {
       document.title = "Codexa";
     }
-  }, [location.pathname, categories, title]);
+  }, [location.pathname, location.search, categories, title]);
 
   const handleLogout = () => {
     if (role === "student") {
@@ -243,7 +261,7 @@ export function PlatformLayout({
                 <div className="platform-nav-category-title">{category.title}</div>
                 {category.items.map((item) => (
                   <Link
-                    className={`platform-nav-item ${isItemActive(location.pathname, item.to) ? "active" : ""}`}
+                    className={`platform-nav-item ${isItemActive(location.pathname, location.search, item.to) ? "active" : ""}`}
                     key={item.to + item.label}
                     to={item.to}
                   >
@@ -311,9 +329,56 @@ export function PlatformLayout({
         </header>
 
         <div className="platform-content">
+          {role === "admin" && (
+            <div className="platform-tab-bar" style={{ marginBottom: "1.5rem" }}>
+              <Link to="/admin/dashboard" className={`platform-tab ${isDashboardOverviewActive ? 'active' : ''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                Overview
+              </Link>
+
+              <Link to="/admin/dashboard?tab=analytics" className={`platform-tab ${isDashboardAnalyticsActive ? 'active' : ''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+                Analytics
+              </Link>
+
+              <Link to="/admin/students" className={`platform-tab ${isUsersActive ? 'active' : ''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Users
+              </Link>
+
+              <Link to="/admin/courses" className={`platform-tab ${isCoursesActive ? 'active' : ''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                </svg>
+                Courses
+              </Link>
+
+              <Link to="/admin/problems" className={`platform-tab ${isProblemsActive ? 'active' : ''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="16 18 22 12 16 6" />
+                  <polyline points="8 6 2 12 8 18" />
+                </svg>
+                Problems
+              </Link>
+            </div>
+          )}
           {role === "admin" && showQuickActions !== false && (
             <div className="quick-actions-row" style={{ marginBottom: "1.5rem" }}>
-              <Link to="/admin/students" className="quick-action-card">
+              <Link to="/admin/students?tab=add" className="quick-action-card">
                 <div className="quick-action-icon-wrapper green">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

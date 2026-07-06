@@ -246,6 +246,13 @@ export default function AdminProblemDetails() {
             actions={
               problem && !isEditing ? (
                 <>
+                  <Link
+                    className="auth-button ghost-button detail-link"
+                    to={`/admin/problems/${problem.id}/solve`}
+                    style={{ background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.4)", color: "#c6f6d5" }}
+                  >
+                    Solve problem
+                  </Link>
                   <button
                     className="auth-button admin-button detail-link"
                     type="button"

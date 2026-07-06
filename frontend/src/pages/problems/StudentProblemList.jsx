@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PlatformLayout, PlatformSection, PlatformStats } from "../../components/PlatformLayout";
+import { getStudentSession, getFacultySession, getAdminSession } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
 
 export default function StudentProblemList() {
+  const session = getStudentSession() || getFacultySession() || getAdminSession();
+  const userRole = session?.user?.role || "student";
+  const buttonClass = userRole === "admin" ? "admin-button" : "student-button";
+  const backToDashboardPath = `/${userRole}/dashboard`;
+
   const [problems, setProblems] = useState([]);
   const [status, setStatus] = useState({
     loading: true,
@@ -49,13 +55,13 @@ export default function StudentProblemList() {
 
   return (
     <PlatformLayout
-      role="student"
+      role={userRole}
       eyebrow="Problem Set"
       title="Choose your next coding challenge"
       subtitle="Browse the practice bank the way you would on a modern coding platform, then open a prompt to solve it in the full workspace."
       meta={`${problems.length} problems`}
       actions={
-        <Link className="auth-button student-button panel-action-button" to="/student/dashboard">
+        <Link className={`auth-button ${buttonClass} panel-action-button`} to={backToDashboardPath}>
           Dashboard
         </Link>
       }
@@ -91,7 +97,7 @@ export default function StudentProblemList() {
               <Link
                 className="question-card question-link-card"
                 key={problem.id}
-                to={`/student/problems/${problem.id}`}
+                to={`/${userRole}/problems/${problem.id}/solve`}
               >
                 <div className="question-card-top">
                   <span className={`difficulty-pill ${problem.difficulty}`}>{problem.difficulty}</span>

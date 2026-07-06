@@ -1,14 +1,156 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getAuthHeaders, getStudentSession } from "../../utils/session";
+import { getAuthHeaders, getStudentSession, getFacultySession, getAdminSession } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
 const initialEditor = {
   language: "python",
   sourceCode: ""
 };
+
+function getDefaultCodeTemplate(language, problemTitle) {
+  const normLang = (language || "").toLowerCase();
+  const title = (problemTitle || "").trim();
+
+  if (title === "Sum of Two Numbers") {
+    if (normLang === "python") {
+      return `class Solution:\n    def solve(self, a: int, b: int) -> int:\n        # Write your code here\n        return a + b\n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    int solve(int a, int b) {\n        // Write your code here\n        return a + b;\n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public int solve(int a, int b) {\n        // Write your code here\n        return a + b;\n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    solve(a, b) {\n        // Write your code here\n        return a + b;\n    }\n}`;
+    }
+  }
+
+  if (title === "Factorial of a Number") {
+    if (normLang === "python") {
+      return `class Solution:\n    def solve(self, n: int) -> int:\n        # Write your code here\n        \n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    int solve(int n) {\n        // Write your code here\n        \n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public int solve(int n) {\n        // Write your code here\n        \n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    solve(n) {\n        // Write your code here\n        \n    }\n}`;
+    }
+  }
+
+  if (title === "Nth Fibonacci Number") {
+    if (normLang === "python") {
+      return `class Solution:\n    def solve(self, n: int) -> int:\n        # Write your code here\n        \n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    int solve(int n) {\n        // Write your code here\n        \n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public int solve(int n) {\n        // Write your code here\n        \n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    solve(n) {\n        // Write your code here\n        \n    }\n}`;
+    }
+  }
+
+  if (title === "Palindrome String Check") {
+    if (normLang === "python") {
+      return `class Solution:\n    def solve(self, s: str) -> bool:\n        # Write your code here\n        \n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    bool solve(string s) {\n        // Write your code here\n        \n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public boolean solve(String s) {\n        // Write your code here\n        \n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    solve(s) {\n        // Write your code here\n        \n    }\n}`;
+    }
+  }
+
+  if (title === "Find the Missing Number") {
+    if (normLang === "python") {
+      return `from typing import List\n\nclass Solution:\n    def solve(self, nums: List[int]) -> int:\n        # Write your code here\n        \n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    int solve(vector<int>& nums) {\n        // Write your code here\n        \n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public int solve(int[] nums) {\n        // Write your code here\n        \n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    solve(nums) {\n        // Write your code here\n        \n    }\n}`;
+    }
+  }
+
+  if (title === "Valid Parentheses") {
+    if (normLang === "python") {
+      return `class Solution:\n    def isValid(self, s: str) -> bool:\n        # Write your code here\n        \n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    bool isValid(string s) {\n        // Write your code here\n        \n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public boolean isValid(String s) {\n        // Write your code here\n        \n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    isValid(s) {\n        // Write your code here\n        \n    }\n}`;
+    }
+  }
+
+  if (title === "Two Sum") {
+    if (normLang === "python") {
+      return `from typing import List\n\nclass Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        # Write your code here\n        \n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your code here\n        \n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        \n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    twoSum(nums, target) {\n        // Write your code here\n        \n    }\n}`;
+    }
+  }
+
+  if (title === "Longest Substring Without Repeating Characters") {
+    if (normLang === "python") {
+      return `class Solution:\n    def lengthOfLongestSubstring(self, s: str) -> int:\n        # Write your code here\n        \n`;
+    }
+    if (normLang === "cpp") {
+      return `class Solution {\npublic:\n    int lengthOfLongestSubstring(string s) {\n        // Write your code here\n        \n    }\n};`;
+    }
+    if (normLang === "java") {
+      return `class Solution {\n    public int lengthOfLongestSubstring(String s) {\n        // Write your code here\n        \n    }\n}`;
+    }
+    if (normLang === "javascript") {
+      return `class Solution {\n    lengthOfLongestSubstring(s) {\n        // Write your code here\n        \n    }\n}`;
+    }
+  }
+
+  if (normLang === "python") {
+    return `class Solution:\n    def solve(self):\n        pass\n`;
+  }
+  if (normLang === "cpp") {
+    return `class Solution {\npublic:\n    void solve() {\n        \n    }\n};`;
+  }
+  if (normLang === "java") {
+    return `class Solution {\n    public void solve() {\n        \n    }\n}`;
+  }
+  if (normLang === "javascript") {
+    return `class Solution {\n    solve() {\n        \n    }\n}`;
+  }
+
+  return "";
+}
+
 const editorDraftStorageKey = "coding_platform_problem_drafts";
 const problemTimerStorageKey = "coding_platform_problem_timers";
+
 const initialTimerState = {
   isRunning: false,
   startedAt: 0,
@@ -333,8 +475,12 @@ function formatExecutionMessage(result, successMessage) {
 
 export default function StudentProblemDetails() {
   const { problemId } = useParams();
-  const session = getStudentSession();
+  const session = getStudentSession() || getFacultySession() || getAdminSession();
   const student = session?.user;
+  const userRole = student?.role || "student";
+  const buttonClass = userRole === "admin" ? "admin-button" : "student-button";
+  const backToProblemsPath = userRole === "admin" ? "/admin/problems" : userRole === "faculty" ? "/faculty/problems" : "/student/problems";
+  const backToDashboardPath = `/${userRole}/dashboard`;
   const editorRef = useRef(null);
   const highlightRef = useRef(null);
   const lineNumbersRef = useRef(null);
@@ -369,6 +515,19 @@ export default function StudentProblemDetails() {
     popupLeft: 18
   });
   const [editorFontSize, setEditorFontSize] = useState(15);
+  const [leftActiveTab, setLeftActiveTab] = useState("description");
+  const [activeTestCaseIndex, setActiveTestCaseIndex] = useState(0);
+  const [cursorPos, setCursorPos] = useState({ line: 1, column: 1 });
+
+  function updateCursorPos(textarea) {
+    if (!textarea) return;
+    const textBeforeCursor = textarea.value.slice(0, textarea.selectionStart);
+    const lines = textBeforeCursor.split("\n");
+    setCursorPos({
+      line: lines.length,
+      column: lines[lines.length - 1].length + 1
+    });
+  }
   const [isDraftReady, setIsDraftReady] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [timerState, setTimerState] = useState(initialTimerState);
@@ -447,6 +606,16 @@ export default function StudentProblemDetails() {
             loading: false,
             error: ""
           });
+
+          const savedDrafts = readStoredObject(editorDraftStorageKey);
+          const savedDraft = savedDrafts[problemId];
+          if (!savedDraft || !savedDraft.sourceCode) {
+            const initialLang = savedDraft?.language || initialEditor.language;
+            setEditor({
+              language: initialLang,
+              sourceCode: getDefaultCodeTemplate(initialLang, data.title)
+            });
+          }
         }
       } catch (error) {
         if (isMounted) {
@@ -583,7 +752,7 @@ export default function StudentProblemDetails() {
 
   useEffect(() => {
     if (!problemId) {
-      return undefined;
+      return;
     }
 
     const solvedTimeKey = getSolvedTimeStorageKey(problemId);
@@ -601,8 +770,7 @@ export default function StudentProblemDetails() {
           elapsedBeforePause: normalizedSolvedTime
         });
       }
-
-      return undefined;
+      return;
     }
 
     const savedTimers = readStoredObject(problemTimerStorageKey);
@@ -626,25 +794,6 @@ export default function StudentProblemDetails() {
     }
 
     setTimerState(normalizedTimer);
-
-    const updateElapsed = () => {
-      if (!normalizedTimer.isRunning) {
-        setElapsedSeconds(normalizedTimer.elapsedBeforePause);
-        return;
-      }
-
-      setElapsedSeconds(
-        normalizedTimer.elapsedBeforePause +
-          Math.max(0, Math.floor((Date.now() - normalizedTimer.startedAt) / 1000))
-      );
-    };
-
-    updateElapsed();
-    const timerId = window.setInterval(updateElapsed, 1000);
-
-    return () => {
-      window.clearInterval(timerId);
-    };
   }, [problemId, isSolved]);
 
   useEffect(() => {
@@ -681,11 +830,11 @@ export default function StudentProblemDetails() {
 
   useEffect(() => {
     if (!problemId) {
-      return;
+      return undefined;
     }
 
     if (isSolved) {
-      return;
+      return undefined;
     }
 
     const savedTimers = readStoredObject(problemTimerStorageKey);
@@ -694,13 +843,22 @@ export default function StudentProblemDetails() {
 
     if (!timerState.isRunning) {
       setElapsedSeconds(timerState.elapsedBeforePause);
-      return;
+      return undefined;
     }
 
-    setElapsedSeconds(
-      timerState.elapsedBeforePause +
-        Math.max(0, Math.floor((Date.now() - timerState.startedAt) / 1000))
-    );
+    const update = () => {
+      setElapsedSeconds(
+        timerState.elapsedBeforePause +
+          Math.max(0, Math.floor((Date.now() - timerState.startedAt) / 1000))
+      );
+    };
+
+    update();
+    const intervalId = window.setInterval(update, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [isSolved, problemId, timerState]);
 
   function updateSuggestionState(sourceCode, cursorPosition, language) {
@@ -759,12 +917,12 @@ export default function StudentProblemDetails() {
   function handleEditorChange(event) {
     const { name, value } = event.target;
 
-    setEditor((currentEditor) => ({
-      ...currentEditor,
-      [name]: value
-    }));
-
     if (name === "language") {
+      setEditor((currentEditor) => ({
+        ...currentEditor,
+        language: value,
+        sourceCode: getDefaultCodeTemplate(value, problem?.title)
+      }));
       setSuggestionState({
         visible: false,
         suggestions: [],
@@ -775,9 +933,23 @@ export default function StudentProblemDetails() {
       return;
     }
 
+    setEditor((currentEditor) => ({
+      ...currentEditor,
+      [name]: value
+    }));
+
     updateSuggestionState(value, event.target.selectionStart, editor.language);
   }
 
+  function handleResetCode() {
+    if (problem) {
+      setEditor((current) => ({
+        ...current,
+        sourceCode: getDefaultCodeTemplate(current.language, problem.title)
+      }));
+      showToast("info", "Reset", "Code reset to default template.");
+    }
+  }
   function handleEditorKeyDown(event) {
     const textarea = event.currentTarget;
     const { selectionStart, selectionEnd, value } = textarea;
@@ -894,6 +1066,7 @@ export default function StudentProblemDetails() {
     setRunResults(null);
     setRunMessage("");
     setConsoleTab("results");
+    setLeftActiveTab("testResult");
 
     try {
       const response = await fetch(`${apiBaseUrl}/submissions`, {
@@ -959,6 +1132,7 @@ export default function StudentProblemDetails() {
     setLatestSubmitResults([]);
     setLatestSubmitExecution(null);
     setConsoleTab("results");
+    setLeftActiveTab("testResult");
 
     try {
       const response = await fetch(`${apiBaseUrl}/submissions/run`, {
@@ -1091,48 +1265,18 @@ export default function StudentProblemDetails() {
         </div>
       ) : null}
       <section className="detail-card student-detail-card student-workspace-card">
-        <div className="workspace-topbar">
-          <div className="workspace-topbar-copy">
-            <p className="auth-kicker">Practice Workspace</p>
-            <h1>
-              {currentProblemIndex >= 0 && problem
-                ? `Problem ${currentProblemIndex + 1}`
-                : "Problem Workspace"}
-            </h1>
-            <p className="workspace-topbar-note">
-              Read the prompt, code your solution, and review the latest verdict in one place.
-            </p>
-          </div>
-          <div className="workspace-nav-cluster">
-            <span className={`workspace-timer-chip ${timerState.isRunning ? "" : "paused"}`}>
-              Timer {formatElapsedTime(elapsedSeconds)}
+        <header className="leetcode-topbar">
+          <div className="leetcode-topbar-left">
+            <span className="leetcode-logo">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style={{ marginRight: "0.2rem" }}><path d="M13.483 0a1.374 1.374 0 0 0-.961.414l-9.777 9.778a1.375 1.375 0 0 0 0 1.945l1.945 1.945a1.375 1.375 0 0 0 1.945 0l7.832-7.831 2.917 2.917a1.375 1.375 0 0 0 1.945 0l1.945-1.945a1.375 1.375 0 0 0 0-1.945L14.444.414A1.374 1.374 0 0 0 13.483 0zm-8.8 14.444a1.375 1.375 0 0 0-1.945 0l-1.945 1.945a1.375 1.375 0 0 0 0 1.945l9.778 9.778a1.375 1.375 0 0 0 1.945 0l1.945-1.945a1.375 1.375 0 0 0 0-1.945l-7.832-7.832-1.946-1.946z"/></svg>
+              Codexa
             </span>
-            <button
-              className="workspace-timer-toggle"
-              type="button"
-              onClick={handleTimerStart}
-              disabled={timerState.isRunning}
-            >
-              Start
-            </button>
-            <button
-              className="workspace-timer-toggle"
-              type="button"
-              onClick={handleTimerPause}
-              disabled={!timerState.isRunning}
-            >
-              Pause
-            </button>
-            <button
-              className="workspace-timer-toggle workspace-timer-reset"
-              type="button"
-              onClick={handleTimerReset}
-            >
-              Reset
-            </button>
+            <span style={{ color: "#2d2d2d", margin: "0 0.5rem" }}>|</span>
+            <span style={{ fontSize: "0.85rem", fontWeight: "500" }}>Daily Question</span>
+            
             <Link
-              className={`workspace-arrow ${previousProblem ? "" : "disabled"}`}
-              to={previousProblem ? `/student/problems/${previousProblem.id}` : "#"}
+              className={`leetcode-nav-btn ${previousProblem ? "" : "disabled"}`}
+              to={previousProblem ? `/${userRole}/problems/${previousProblem.id}/solve` : "#"}
               aria-disabled={previousProblem ? "false" : "true"}
               onClick={(event) => {
                 if (!previousProblem) {
@@ -1140,17 +1284,11 @@ export default function StudentProblemDetails() {
                 }
               }}
             >
-              Prev
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
             </Link>
             <Link
-              className="workspace-arrow workspace-arrow-secondary"
-              to="/student/problems"
-            >
-              All Problems
-            </Link>
-            <Link
-              className={`workspace-arrow ${nextProblem ? "" : "disabled"}`}
-              to={nextProblem ? `/student/problems/${nextProblem.id}` : "#"}
+              className={`leetcode-nav-btn ${nextProblem ? "" : "disabled"}`}
+              to={nextProblem ? `/${userRole}/problems/${nextProblem.id}/solve` : "#"}
               aria-disabled={nextProblem ? "false" : "true"}
               onClick={(event) => {
                 if (!nextProblem) {
@@ -1158,341 +1296,228 @@ export default function StudentProblemDetails() {
                 }
               }}
             >
-              Next
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </Link>
+            <Link to={backToProblemsPath} className="leetcode-nav-btn" title="All Problems">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
             </Link>
           </div>
-        </div>
+
+          <div className="leetcode-topbar-center">
+            <button
+              className="leetcode-action-btn"
+              onClick={handleRunCode}
+              disabled={isRunning || isSubmitting}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              {isRunning ? "Running..." : "Run"}
+            </button>
+            <button
+              className="leetcode-action-btn leetcode-submit-btn"
+              type="submit"
+              form="problem-editor-form"
+              disabled={isSubmitting || isRunning}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "2px" }}><polyline points="20 6 9 17 4 12"/></svg>
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </button>
+          </div>
+
+          <div className="leetcode-topbar-right">
+            <div className="leetcode-timer-wrapper" style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+              <div className={`leetcode-timer-chip ${!timerState.isRunning ? "paused" : ""}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                {formatElapsedTime(elapsedSeconds)}
+              </div>
+              <button
+                type="button"
+                className="leetcode-nav-btn"
+                onClick={timerState.isRunning ? handleTimerPause : handleTimerStart}
+                title={timerState.isRunning ? "Pause timer" : "Start timer"}
+              >
+                {timerState.isRunning ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                )}
+              </button>
+              <button
+                type="button"
+                className="leetcode-nav-btn"
+                onClick={handleTimerReset}
+                title="Reset timer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              </button>
+            </div>
+            <button className="leetcode-premium-btn">Premium</button>
+          </div>
+        </header>
+
         {status.loading ? <h1>Loading question...</h1> : null}
         {status.error ? <p className="form-status error">{status.error}</p> : null}
 
         {problem ? (
-          <section className="workspace-shell">
+          <section className="workspace-shell" style={{ gridTemplateColumns: "1fr 1.15fr", padding: "0.5rem" }}>
             <article className="detail-block workspace-column workspace-problem-panel">
-              <div className="workspace-problem-header">
-                <div>
-                  <div className="workspace-tab-row workspace-tab-row-compact">
-                    <span className="workspace-tab active">Problem</span>
-                    <span className="workspace-tab">Samples</span>
-                    <span className="workspace-tab">Notes</span>
-                  </div>
-                  <h2 className="workspace-problem-title">
-                    {currentProblemIndex >= 0 ? `${currentProblemIndex + 1}. ` : ""}
-                    {problem.title}
-                  </h2>
-                </div>
-                <span className="question-count">#{currentProblemIndex >= 0 ? currentProblemIndex + 1 : "-"}</span>
+              <div className="leetcode-tab-container">
+                <button
+                  type="button"
+                  className={`leetcode-tab ${leftActiveTab === "description" ? "active" : ""}`}
+                  onClick={() => setLeftActiveTab("description")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                  Description
+                </button>
+                <button
+                  type="button"
+                  className={`leetcode-tab ${leftActiveTab === "editorial" ? "active" : ""}`}
+                  onClick={() => setLeftActiveTab("editorial")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+                  Editorial
+                </button>
+                <button
+                  type="button"
+                  className={`leetcode-tab ${leftActiveTab === "solutions" ? "active" : ""}`}
+                  onClick={() => setLeftActiveTab("solutions")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12M12 3v11M16 14l-4-5-4 5v5a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-5z"/></svg>
+                  Solutions
+                </button>
+                <button
+                  type="button"
+                  className={`leetcode-tab ${leftActiveTab === "submissions" ? "active" : ""}`}
+                  onClick={() => setLeftActiveTab("submissions")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                  Submissions
+                </button>
+                <button
+                  type="button"
+                  className={`leetcode-tab ${leftActiveTab === "testResult" ? "active" : ""}`}
+                  onClick={() => setLeftActiveTab("testResult")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                  Test Result
+                </button>
+                <button
+                  type="button"
+                  className={`leetcode-tab ${leftActiveTab === "testcase" ? "active" : ""}`}
+                  onClick={() => setLeftActiveTab("testcase")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2cbb5d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Testcase
+                </button>
               </div>
 
-              <div className="workspace-meta-row workspace-meta-row-rich">
-                <span className={`difficulty-pill ${problem.difficulty}`}>{problem.difficulty}</span>
-                <span className="workspace-meta-chip">
-                  {(problem.sample_test_cases || []).length} sample cases
-                </span>
-                <span className="workspace-meta-chip">
-                  {(problem.tags || []).length} topics
-                </span>
-              </div>
-
-              <div className="pill-row">
-                {(problem.tags || []).map((tag) => (
-                  <span className="tag-pill" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              <div className="workspace-subsection workspace-statement-section">
-                <p className="workspace-statement-copy">{problem.statement}</p>
-              </div>
-
-              <div className="workspace-brief-strip">
-                <article className="workspace-brief-card">
-                  <span>Mode</span>
-                  <strong>Timed coding round</strong>
-                  <p>Use Run for visible cases and Submit for hidden platform checks.</p>
-                </article>
-                <article className="workspace-brief-card">
-                  <span>Language</span>
-                  <strong>{editor.language.toUpperCase()}</strong>
-                  <p>Switch languages anytime without leaving the problem screen.</p>
-                </article>
-              </div>
-
-              <div className="workspace-subsection">
-                <div className="workspace-section-heading">
-                  <h3>Problem requirements</h3>
-                  <span className="workspace-section-tag">Like a coding round brief</span>
-                </div>
-                <div className="workspace-requirement-grid">
-                  <article className="workspace-info-card">
-                    <span>Input format</span>
-                    <p>{problem.input_format || "No input format provided yet."}</p>
-                  </article>
-                  <article className="workspace-info-card">
-                    <span>Output format</span>
-                    <p>{problem.output_format || "No output format provided yet."}</p>
-                  </article>
-                  <article className="workspace-info-card workspace-info-card-wide">
-                    <span>Constraints</span>
-                    <p>{problem.constraints_text || "No constraints provided yet."}</p>
-                  </article>
-                  <article className="workspace-info-card workspace-info-card-wide">
-                    <span>Editorial hint</span>
-                    <p>{problem.examples_text || "No example explanation provided yet."}</p>
-                  </article>
-                </div>
-              </div>
-
-              <div className="workspace-subsection">
-                <div className="workspace-section-heading">
-                  <h3>Important note</h3>
-                  <span className="workspace-section-tag">Assessment behavior</span>
-                </div>
-                <div className="workspace-note-card">
-                  <p>
-                    `Run code` executes only the public sample cases shown below. `Submit solution`
-                    checks your final answer against hidden evaluation cases and records the result.
-                  </p>
-                </div>
-              </div>
-
-              <div className="workspace-subsection">
-                <div className="workspace-section-heading">
-                  <h3>Sample test cases</h3>
-                  <span className="workspace-section-tag">Use these before submitting</span>
-                </div>
-                {problem.sample_test_cases?.length ? (
-                  <div className="sample-case-list">
-                    {problem.sample_test_cases.map((testCase, index) => (
-                      <article className="sample-case-card" key={testCase.id || index}>
-                        <div className="sample-case-header">
-                          <strong>Example {index + 1}</strong>
-                          <span className="workspace-meta-chip">Public case</span>
-                        </div>
-                        <div className="sample-case-block">
-                          <span>Input</span>
-                          <p className="history-snippet">{testCase.input_data}</p>
-                        </div>
-                        <div className="sample-case-block">
-                          <span>Expected output</span>
-                          <p className="history-snippet">{testCase.expected_output}</p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p>No sample cases shared yet.</p>
-                )}
-              </div>
-            </article>
-
-            <section className="workspace-right-column">
-              <section className="detail-block workspace-column editor-column">
-                <div className="workspace-ide-topbar">
-                  <div className="workspace-file-tab-group">
-                    <span className="workspace-file-pill">Explorer</span>
-                    <span className="workspace-file-tab">
-                      {problem.title.replace(/\s+/g, "").slice(0, 14) || "Solution"}.
-                      {editor.language === "python"
-                        ? "py"
-                        : editor.language === "javascript"
-                          ? "js"
-                          : editor.language === "java"
-                            ? "java"
-                            : "cpp"}
-                    </span>
-                  </div>
-                  <div className="workspace-ide-actions">
-                    <button
-                      className="auth-button ghost-button editor-action-button"
-                      type="button"
-                      onClick={handleRunCode}
-                      disabled={isRunning || isSubmitting}
-                    >
-                      {isRunning ? "Running..." : "Run"}
-                    </button>
-                    <button
-                      className="auth-button student-button editor-action-button"
-                      type="submit"
-                      form="problem-editor-form"
-                      disabled={isSubmitting || isRunning}
-                    >
-                      {isSubmitting ? "Submitting..." : "Submit"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="workspace-column-header workspace-editor-header">
-                  <div>
-                    <p className="auth-kicker">Code Editor</p>
-                    <h2>Solve this problem</h2>
-                  </div>
-                  <div className="editor-toolbar editor-toolbar-wide">
-                    <label className="form-field editor-toolbar-label" htmlFor="language">
-                      Language
-                    </label>
-                    <select
-                      id="language"
-                      name="language"
-                      value={editor.language}
-                      onChange={handleEditorChange}
-                    >
-                      <option value="python">Python</option>
-                      <option value="cpp">C++</option>
-                      <option value="java">Java</option>
-                      <option value="javascript">JavaScript</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="workspace-editor-notes workspace-editor-toolbar-row">
-                  <span className="workspace-meta-chip">Auto-check enabled</span>
-                  <span className="workspace-meta-chip">Run: sample tests only</span>
-                  <span className="workspace-meta-chip">Submit: hidden tests only</span>
-                  <span className="workspace-meta-chip">Supported: Python, C++, Java, JavaScript</span>
-                  <div className="editor-zoom-controls" aria-label="Editor zoom controls">
-                    <button
-                      className="editor-zoom-button"
-                      type="button"
-                      onClick={() => setEditorFontSize((currentSize) => Math.max(currentSize - 1, 12))}
-                    >
-                      A-
-                    </button>
-                    <span className="workspace-meta-chip editor-zoom-label">{editorFontSize}px</span>
-                    <button
-                      className="editor-zoom-button"
-                      type="button"
-                      onClick={() => setEditorFontSize((currentSize) => Math.min(currentSize + 1, 24))}
-                    >
-                      A+
-                    </button>
-                  </div>
-                </div>
-                <form className="auth-form editor-form" id="problem-editor-form" onSubmit={handleSubmit}>
-                  <label className="form-field" htmlFor="sourceCode">
-                    Source code
-                  </label>
-                  <div className="editor-surface">
-                    <div
-                      className="code-editor-shell"
-                      style={{ fontSize: `${editorFontSize}px` }}
-                      onClick={(event) => {
-                        if (event.target === event.currentTarget || event.target === highlightRef.current) {
-                          editorRef.current?.focus();
-                        }
-                      }}
-                    >
-                      <div className="code-editor-gutter" ref={lineNumbersRef} aria-hidden="true">
-                        {editorLineNumbers.map((lineNumber) => (
-                          <span key={lineNumber}>{lineNumber}</span>
-                        ))}
+              <div className="workspace-problem-content-scroll">
+                {leftActiveTab === "description" && (
+                  <>
+                    <div className="workspace-problem-header">
+                      <div>
+                        <h1 style={{ fontSize: "1.45rem", fontWeight: "700", marginBottom: "0.75rem", color: "#f3f4f6" }}>
+                          {currentProblemIndex >= 0 ? `${currentProblemIndex + 1}. ${problem.title}` : problem.title}
+                        </h1>
                       </div>
-                      <div className="code-editor-stage">
-                        <pre
-                          ref={highlightRef}
-                          className="code-editor-highlight"
-                          aria-hidden="true"
-                          dangerouslySetInnerHTML={{
-                            __html: `${highlightedCode}${editor.sourceCode.endsWith("\n") ? "\n " : " "}`
-                          }}
-                        />
-                        <textarea
-                          ref={editorRef}
-                          id="sourceCode"
-                          name="sourceCode"
-                          rows="18"
-                          className="code-editor-input"
-                          placeholder="Write your solution here..."
-                          value={editor.sourceCode}
-                          onChange={handleEditorChange}
-                          onKeyDown={handleEditorKeyDown}
-                          onScroll={handleEditorScroll}
-                          spellCheck="false"
-                          autoCapitalize="off"
-                          autoComplete="off"
-                          autoCorrect="off"
-                          onBlur={() => {
-                            window.setTimeout(() => {
-                              setSuggestionState((current) => ({
-                                ...current,
-                                visible: false
-                              }));
-                            }, 120);
-                          }}
-                          onClick={(event) => {
-                            updateSuggestionState(
-                              event.currentTarget.value,
-                              event.currentTarget.selectionStart,
-                              editor.language
-                            );
-                          }}
-                          required
-                        />
+                      <span className="question-count">#{currentProblemIndex >= 0 ? currentProblemIndex + 1 : "-"}</span>
+                    </div>
+
+                    <div className="workspace-meta-row workspace-meta-row-rich">
+                      <span className={`difficulty-pill ${problem.difficulty}`}>{problem.difficulty}</span>
+                      <span className="workspace-meta-chip">
+                        {(problem.sample_test_cases || []).length} sample cases
+                      </span>
+                      <span className="workspace-meta-chip">
+                        {(problem.tags || []).length} topics
+                      </span>
+                    </div>
+
+                    <div className="pill-row" style={{ marginBottom: "1.5rem" }}>
+                      {(problem.tags || []).map((tag) => (
+                        <span className="tag-pill" key={tag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="workspace-subsection workspace-statement-section">
+                      <p className="workspace-statement-copy" style={{ whiteSpace: "pre-line" }}>{problem.statement}</p>
+                    </div>
+
+                    <div className="workspace-subsection" style={{ marginTop: "2rem" }}>
+                      <div className="workspace-section-heading">
+                        <h3>Constraints</h3>
+                      </div>
+                      <div className="workspace-note-card" style={{ background: "#262626", border: "none" }}>
+                        <p style={{ fontFamily: "monospace", fontSize: "0.9rem" }}>{problem.constraints_text || "No constraints provided."}</p>
                       </div>
                     </div>
-                    {suggestionState.visible ? (
-                      <div
-                        className="editor-suggestion-panel"
-                        style={{
-                          top: `${suggestionState.popupTop}px`,
-                          left: `${suggestionState.popupLeft}px`
-                        }}
-                      >
-                        {suggestionState.suggestions.map((entry, index) => (
-                          <button
-                            className={`editor-suggestion-item ${index === suggestionState.selectedIndex ? "active" : ""}`}
-                            key={`${entry.label}-${index}`}
-                            type="button"
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              acceptSuggestion(index);
-                            }}
-                          >
-                            <strong>{entry.label}</strong>
-                            <span>{entry.insertText.replace(/\n/g, " ").slice(0, 42)}</span>
-                          </button>
+                  </>
+                )}
+
+                {leftActiveTab === "editorial" && (
+                  <div style={{ padding: "1rem", color: "#8a8a8a" }}>
+                    <h3>Editorial Hint</h3>
+                    <p style={{ whiteSpace: "pre-line" }}>{problem.examples_text || "No editorial guide available for this challenge."}</p>
+                  </div>
+                )}
+
+                {leftActiveTab === "solutions" && (
+                  <div style={{ padding: "1rem", color: "#8a8a8a" }}>
+                    <h3>Community Solutions</h3>
+                    <p>No community solutions have been submitted yet. Be the first to share your approach!</p>
+                  </div>
+                )}
+
+                {leftActiveTab === "submissions" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <div className="workspace-column-header" style={{ marginBottom: "1rem" }}>
+                      <h2>Submissions History ({submissionHistory.length})</h2>
+                    </div>
+                    {historyStatus.loading ? <p className="dashboard-copy">Loading submission history...</p> : null}
+                    {historyStatus.error ? <p className="form-status error">{historyStatus.error}</p> : null}
+
+                    {!historyStatus.loading && !historyStatus.error && submissionHistory.length === 0 ? (
+                      <p className="dashboard-copy">No submissions yet. Send your first solution above.</p>
+                    ) : null}
+                    {!historyStatus.loading && !historyStatus.error && submissionHistory.length > 0 ? (
+                      <div className="history-list workspace-history-list">
+                        {submissionHistory.map((submission) => (
+                          <article className="history-card workspace-history-card" key={submission.id}>
+                            <div className="question-card-top">
+                              <span className={`status-pill ${submission.status}`}>
+                                {submission.status.replaceAll("_", " ")}
+                              </span>
+                              <span className="question-meta">
+                                {new Date(submission.submitted_at).toLocaleString()}
+                              </span>
+                            </div>
+                            <strong>{submission.language.toUpperCase()}</strong>
+                            <p className="question-meta">
+                              {submission.passed_test_cases}/{submission.total_test_cases} passed |{" "}
+                              {Math.max(
+                                (submission.total_test_cases || 0) - (submission.passed_test_cases || 0),
+                                0
+                              )} failed | {submission.execution_time_ms ?? "-"} ms
+                            </p>
+                            {submission.compiler_output ? (
+                              <p className="question-meta">{submission.compiler_output.split("\n")[0]}</p>
+                            ) : null}
+                            <pre className="history-snippet" style={{ maxHeight: "150px", overflowY: "auto" }}>{submission.source_code}</pre>
+                          </article>
                         ))}
                       </div>
                     ) : null}
                   </div>
+                )}
 
-                  <div className="workspace-submit-row">
-                    <span className="question-meta">
-                      Run checks visible cases. Submit checks hidden platform cases.
-                    </span>
-                  </div>
-                </form>
-              </section>
+                {leftActiveTab === "testResult" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <div className="workspace-column-header" style={{ marginBottom: "1rem" }}>
+                      <h2>Execution Results</h2>
+                    </div>
 
-              <section className="detail-block workspace-column console-column" style={{ marginTop: "1rem" }}>
-                <div className="workspace-column-header" style={{ marginBottom: "1rem" }}>
-                  <div>
-                    <p className="auth-kicker">Console</p>
-                    <h2>Execution Results & Submissions</h2>
-                  </div>
-                </div>
-
-                <div className="workspace-console-tabbar" style={{ marginBottom: "1.2rem" }}>
-                  <button
-                    type="button"
-                    className={`workspace-console-tab ${consoleTab === "results" ? "active" : ""}`}
-                    onClick={() => setConsoleTab("results")}
-                    style={{ cursor: "pointer", outline: "none" }}
-                  >
-                    Test Results
-                  </button>
-                  <button
-                    type="button"
-                    className={`workspace-console-tab ${consoleTab === "submissions" ? "active" : ""}`}
-                    onClick={() => setConsoleTab("submissions")}
-                    style={{ cursor: "pointer", outline: "none" }}
-                  >
-                    Submissions ({submissionHistory.length})
-                  </button>
-                </div>
-
-                {consoleTab === "results" && (
-                  <>
                     {/* Run Results */}
                     {runResults && (
                       <>
@@ -1500,7 +1525,7 @@ export default function StudentProblemDetails() {
                         <div className="workspace-result-overview testcase-overview">
                           <article className="workspace-result-card">
                             <span>Run verdict</span>
-                            <strong>{runResults.verdictLabel || runResults.status.replaceAll("_", " ")}</strong>
+                            <strong className={runMessageClassName}>{runResults.verdictLabel || runResults.status.replaceAll("_", " ")}</strong>
                           </article>
                           <article className="workspace-result-card">
                             <span>Passed</span>
@@ -1518,7 +1543,7 @@ export default function StudentProblemDetails() {
                           </article>
                         </div>
 
-                        <div className="sample-case-list testcase-result-list">
+                        <div className="sample-case-list testcase-result-list" style={{ marginTop: "1rem" }}>
                           {(runResults.testCaseResults || []).map((testCaseResult, index) => (
                             <article className="sample-case-card testcase-result-card" key={testCaseResult.id || index}>
                               <div className="sample-case-header">
@@ -1557,9 +1582,6 @@ export default function StudentProblemDetails() {
                           <div className="workspace-subsection">
                             <div className="workspace-section-heading">
                               <h3>Run error output</h3>
-                              <span className="workspace-section-tag">
-                                {runResults.verdictLabel || "Execution error"}
-                              </span>
                             </div>
                             <pre className="history-snippet workspace-console-output">{runResults.stderr}</pre>
                           </div>
@@ -1577,7 +1599,7 @@ export default function StudentProblemDetails() {
                         <div className="workspace-result-overview">
                           <article className="workspace-result-card">
                             <span>Latest verdict</span>
-                            <strong>
+                            <strong className={submissionMessageClassName}>
                               {latestSubmitExecution?.verdictLabel ||
                                 latestSubmission.status.replaceAll("_", " ")}
                             </strong>
@@ -1606,7 +1628,6 @@ export default function StudentProblemDetails() {
                           <div className="workspace-subsection workspace-result-log">
                             <div className="workspace-section-heading">
                               <h3>Latest execution log</h3>
-                              <span className="workspace-section-tag">Compiler and runtime feedback</span>
                             </div>
                             <pre className="history-snippet workspace-console-output">{latestExecutionDetails}</pre>
                           </div>
@@ -1616,7 +1637,6 @@ export default function StudentProblemDetails() {
                           <div className="workspace-subsection">
                             <div className="workspace-section-heading">
                               <h3>Error output</h3>
-                              <span className="workspace-section-tag">Compiler or runtime stream</span>
                             </div>
                             <pre className="history-snippet workspace-console-output">
                               {latestSubmitExecution.stderr}
@@ -1626,67 +1646,199 @@ export default function StudentProblemDetails() {
                       </>
                     )}
 
-                    {/* No results yet */}
                     {!runResults && !latestSubmission && (
                       <p className="dashboard-copy">
                         Use Run to execute sample test cases, or Submit to evaluate against all test cases.
                       </p>
                     )}
-                  </>
+                  </div>
                 )}
 
-                {consoleTab === "submissions" && (
-                  <>
-                    {historyStatus.loading ? <p className="dashboard-copy">Loading submission history...</p> : null}
-                    {historyStatus.error ? <p className="form-status error">{historyStatus.error}</p> : null}
-
-                    {!historyStatus.loading && !historyStatus.error && submissionHistory.length === 0 ? (
-                      <p className="dashboard-copy">No submissions yet. Send your first solution above.</p>
-                    ) : null}
-                    {!historyStatus.loading && !historyStatus.error && submissionHistory.length > 0 ? (
-                      <div className="history-list workspace-history-list">
-                        {submissionHistory.map((submission) => (
-                          <article className="history-card workspace-history-card" key={submission.id}>
-                            <div className="question-card-top">
-                              <span className={`status-pill ${submission.status}`}>
-                                {submission.status.replaceAll("_", " ")}
-                              </span>
-                              <span className="question-meta">
-                                {new Date(submission.submitted_at).toLocaleString()}
-                              </span>
-                            </div>
-                            <strong>{submission.language.toUpperCase()}</strong>
-                            <p className="question-meta">
-                              {submission.passed_test_cases}/{submission.total_test_cases} passed |{" "}
-                              {Math.max(
-                                (submission.total_test_cases || 0) - (submission.passed_test_cases || 0),
-                                0
-                              )} failed | {submission.execution_time_ms ?? "-"} ms
-                            </p>
-                            {submission.compiler_output ? (
-                              <p className="question-meta">{submission.compiler_output.split("\n")[0]}</p>
-                            ) : null}
-                            <p className="history-snippet">{submission.source_code}</p>
-                          </article>
-                        ))}
+                {leftActiveTab === "testcase" && (
+                  <div className="leetcode-testcase-container">
+                    <div className="leetcode-testcase-tab-row">
+                      {(problem.sample_test_cases || []).map((testCase, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className={`leetcode-testcase-tab ${activeTestCaseIndex === index ? "active" : ""}`}
+                          onClick={() => setActiveTestCaseIndex(index)}
+                        >
+                          Case {index + 1}
+                        </button>
+                      ))}
+                      <button type="button" className="leetcode-testcase-tab" style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                        +
+                      </button>
+                    </div>
+                    {problem.sample_test_cases?.[activeTestCaseIndex] && (
+                      <div className="leetcode-testcase-input-box">
+                        <label className="leetcode-testcase-label">intervals =</label>
+                        <textarea
+                          className="leetcode-testcase-textarea"
+                          rows="4"
+                          readOnly
+                          value={problem.sample_test_cases[activeTestCaseIndex].input_data}
+                        />
                       </div>
-                    ) : null}
-                  </>
+                    )}
+                  </div>
                 )}
+              </div>
 
-            </section>
+            </article>
+
+            <article className="detail-block workspace-column editor-column">
+              <div className="leetcode-tab-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingRight: "0.5rem" }}>
+                <span className="leetcode-tab active" style={{ cursor: "default", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                  Code
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", color: "#8a8a8a" }}>
+                  <svg className="leetcode-icon-btn" title="Toggle Fullscreen" style={{ cursor: "pointer", opacity: 0.7 }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                  <svg className="leetcode-icon-btn" title="Collapse" style={{ cursor: "pointer", opacity: 0.7 }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+
+              <div className="workspace-column-header workspace-editor-header" style={{ padding: "0.5rem 1rem", borderBottom: "1px solid #2d2d2d", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="editor-toolbar" style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                  <select
+                    id="language"
+                    name="language"
+                    value={editor.language}
+                    onChange={handleEditorChange}
+                    style={{ background: "transparent", border: "none", color: "#eff1f5", padding: "0.25rem 0.5rem 0.25rem 0", borderRadius: "4px", outline: "none", cursor: "pointer", fontWeight: "500", fontSize: "0.85rem" }}
+                  >
+                    <option value="python" style={{ background: "#1e1e1e" }}>Python</option>
+                    <option value="cpp" style={{ background: "#1e1e1e" }}>C++</option>
+                    <option value="java" style={{ background: "#1e1e1e" }}>Java</option>
+                    <option value="javascript" style={{ background: "#1e1e1e" }}>JavaScript</option>
+                  </select>
+                  <span style={{ color: "#8a8a8a", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Auto
+                  </span>
+                </div>
+                
+                <div className="editor-actions-right" style={{ display: "flex", alignItems: "center", gap: "1rem", color: "#8a8a8a" }}>
+                  <button type="button" className="leetcode-nav-btn" title="Format code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+                  </button>
+                  <button type="button" className="leetcode-nav-btn" title="Save code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </button>
+                  <button type="button" className="leetcode-nav-btn" title="Show templates" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 18l6-6-6-6M8 6L2 12l6 6"/></svg>
+                  </button>
+                  <button type="button" className="leetcode-nav-btn" onClick={handleResetCode} title="Reset code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+                  </button>
+                  <button type="button" className="leetcode-nav-btn" title="Settings" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <form className="auth-form editor-form" id="problem-editor-form" onSubmit={handleSubmit}>
+                <div className="editor-surface">
+                  <div
+                    className="code-editor-shell"
+                    style={{ fontSize: `${editorFontSize}px` }}
+                    onClick={(event) => {
+                      if (event.target === event.currentTarget || event.target === highlightRef.current) {
+                        editorRef.current?.focus();
+                      }
+                    }}
+                  >
+                    <div className="code-editor-gutter" ref={lineNumbersRef} aria-hidden="true">
+                      {editorLineNumbers.map((lineNumber) => (
+                        <span key={lineNumber}>{lineNumber}</span>
+                      ))}
+                    </div>
+                    <div className="code-editor-stage">
+                      <pre
+                        ref={highlightRef}
+                        className="code-editor-highlight"
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{
+                          __html: `${highlightedCode}${editor.sourceCode.endsWith("\n") ? "\n " : " "}`
+                        }}
+                      />
+                      <textarea
+                        ref={editorRef}
+                        id="sourceCode"
+                        name="sourceCode"
+                        rows="18"
+                        className="code-editor-input"
+                        placeholder="Write your solution here..."
+                        value={editor.sourceCode}
+                        onChange={handleEditorChange}
+                        onKeyDown={handleEditorKeyDown}
+                        onScroll={handleEditorScroll}
+                        onKeyUp={(event) => {
+                          updateCursorPos(event.currentTarget);
+                        }}
+                        onSelect={(event) => {
+                          updateCursorPos(event.currentTarget);
+                        }}
+                        onClick={(event) => {
+                          updateSuggestionState(
+                            event.currentTarget.value,
+                            event.currentTarget.selectionStart,
+                            editor.language
+                          );
+                          updateCursorPos(event.currentTarget);
+                        }}
+                        spellCheck="false"
+                        autoCapitalize="off"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        onBlur={() => {
+                          window.setTimeout(() => {
+                            setSuggestionState((current) => ({
+                              ...current,
+                              visible: false
+                            }));
+                          }, 120);
+                        }}
+                        required
+                      />
+                    </div>
+                  </div>
+                  {suggestionState.visible ? (
+                    <div
+                      className="editor-suggestion-panel"
+                      style={{
+                        top: `${suggestionState.popupTop}px`,
+                        left: `${suggestionState.popupLeft}px`
+                      }}
+                    >
+                      {suggestionState.suggestions.map((entry, index) => (
+                        <button
+                          className={`editor-suggestion-item ${index === suggestionState.selectedIndex ? "active" : ""}`}
+                          key={`${entry.label}-${index}`}
+                          type="button"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            acceptSuggestion(index);
+                          }}
+                        >
+                          <strong>{entry.label}</strong>
+                          <span>{entry.insertText.replace(/\n/g, " ").slice(0, 42)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </form>
+
+              <div className="editor-status-bar">
+                <span>Saved</span>
+                <span>Ln {cursorPos.line}, Col {cursorPos.column}</span>
+              </div>
+            </article>
           </section>
-        </section>
         ) : null}
-
-        <div className="detail-actions">
-          <Link className="auth-button student-button detail-link" to="/student/problems">
-            Back to question list
-          </Link>
-          <Link className="auth-button ghost-button detail-link" to="/student/dashboard">
-            Back to dashboard
-          </Link>
-        </div>
       </section>
     </main>
   );

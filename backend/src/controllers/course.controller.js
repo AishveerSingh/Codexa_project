@@ -770,6 +770,7 @@ export const runCourseCodingProblem = asyncHandler(async (req, res) => {
   const executionResult = await executeSubmission({
     language: payload.language,
     sourceCode: payload.sourceCode,
+    problemId: req.params.problemId,
     testCases:
       sampleTestCaseResult.rows.length > 0
         ? sampleTestCaseResult.rows
@@ -828,6 +829,7 @@ export const submitCourseCodingProblem = asyncHandler(async (req, res) => {
   const executionResult = await executeSubmission({
     language: payload.language,
     sourceCode: payload.sourceCode,
+    problemId: req.params.problemId,
     testCases:
       allTestCaseResult.rows.length > 0
         ? allTestCaseResult.rows

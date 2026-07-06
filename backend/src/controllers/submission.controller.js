@@ -107,7 +107,8 @@ export async function createSubmission(req, res, next) {
     const executionResult = await executeSubmission({
       language: normalizedLanguage,
       sourceCode,
-      testCases: testCaseResult.rows
+      testCases: testCaseResult.rows,
+      problemId: problemId
     });
     const {
       status,
@@ -245,7 +246,8 @@ export async function runSubmission(req, res, next) {
     const executionResult = await executeSubmission({
       language: normalizedLanguage,
       sourceCode,
-      testCases: testCasesToRun
+      testCases: testCasesToRun,
+      problemId: problemId
     });
 
     res.json({

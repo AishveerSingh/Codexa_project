@@ -78,6 +78,7 @@ export default function MainRoutes() {
       <Route path="/student/account" element={<StudentAccountPage />} />
       <Route path="/student/problems" element={<StudentProblemList />} />
       <Route path="/student/problems/:problemId" element={<StudentProblemDetails />} />
+      <Route path="/student/problems/:problemId/solve" element={<StudentProblemDetails />} />
       <Route path="/studentDashboard" element={<StudentDashboard />} />
       <Route path="/faculty/login" element={<FacultyLogin />} />
       <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
@@ -86,6 +87,8 @@ export default function MainRoutes() {
       <Route path="/faculty/courses/:courseId/problems/:problemId" element={<FacultyCourseProblemDetails />} />
       <Route path="/faculty/students" element={<FacultyStudentList />} />
       <Route path="/faculty/students/:studentId/submissions" element={<FacultyStudentSubmissions />} />
+      <Route path="/faculty/problems" element={<StudentProblemList />} />
+      <Route path="/faculty/problems/:problemId/solve" element={<StudentProblemDetails />} />
       <Route path="/faculty/account" element={<FacultyAccountPage />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -96,6 +99,7 @@ export default function MainRoutes() {
       <Route path="/admin/problems/new" element={<AdminProblemCreate />} />
       <Route path="/admin/problems" element={<AdminProblemList />} />
       <Route path="/admin/problems/:problemId" element={<AdminProblemDetails />} />
+      <Route path="/admin/problems/:problemId/solve" element={<StudentProblemDetails />} />
       <Route path="/admin/students" element={<AdminStudentList />} />
 
       <Route path="/admin/admins" element={<AdminAdminList />} />

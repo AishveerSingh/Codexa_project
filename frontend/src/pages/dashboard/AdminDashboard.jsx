@@ -60,6 +60,9 @@ const defaultActivities = [
 
 export default function AdminDashboard() {
   const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const activeTab = queryParams.get("tab") || "overview";
+
   const [session, setSession] = useState(location.state?.session || getAdminSession());
   const [problems, setProblems] = useState([]);
   const [students, setStudents] = useState([]);
@@ -71,6 +74,8 @@ export default function AdminDashboard() {
   const [problemStatus, setProblemStatus] = useState({ loading: true, error: "" });
   const [studentStatus, setStudentStatus] = useState({ loading: true, error: "" });
   const [facultyStatus, setFacultyStatus] = useState({ loading: true, error: "" });
+  const [courseStatus, setCourseStatus] = useState({ loading: true, error: "" });
+  const [submissionStatus, setSubmissionStatus] = useState({ loading: true, error: "" });
   const [logStatus, setLogStatus] = useState({ loading: true, error: "" });
 
   useEffect(() => {
@@ -127,20 +132,26 @@ export default function AdminDashboard() {
   async function loadCourses() {
     if (!session?.token) return;
     try {
+      setCourseStatus({ loading: true, error: "" });
       const data = await apiRequest("/courses", {}, session.token);
       setCourses(data);
+      setCourseStatus({ loading: false, error: "" });
     } catch (error) {
       console.error("Failed to load courses:", error);
+      setCourseStatus({ loading: false, error: error.message });
     }
   }
 
   async function loadSubmissions() {
     if (!session?.token) return;
     try {
+      setSubmissionStatus({ loading: true, error: "" });
       const data = await apiRequest("/submissions", {}, session.token);
       setSubmissions(data);
+      setSubmissionStatus({ loading: false, error: "" });
     } catch (error) {
       console.error("Failed to load submissions:", error);
+      setSubmissionStatus({ loading: false, error: error.message });
     }
   }
 
@@ -178,46 +189,10 @@ export default function AdminDashboard() {
   return (
     <PlatformLayout
       role="admin"
-      title="Admin Dashboard"
-      subtitle="Full platform control — users, courses, problems, analytics"
+      title={activeTab === "analytics" ? "Platform Analytics" : "Admin Dashboard"}
+      subtitle={activeTab === "analytics" ? "Detailed activity logs and platform health check" : "Full platform control — users, courses, problems, analytics"}
     >
-      {/* Navigation Pills Bar */}
-      <div className="platform-tab-bar">
-        <button className="platform-tab active">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          Overview
-        </button>
 
-        <Link to="/admin/students" className="platform-tab">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-          Users
-        </Link>
-
-        <Link to="/admin/courses" className="platform-tab">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-          </svg>
-          Courses
-        </Link>
-
-        <Link to="/admin/problems" className="platform-tab">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-          </svg>
-          Problems
-        </Link>
-      </div>
 
       {/* Metrics Cards Grid */}
       <div className="platform-stats-grid">
@@ -229,7 +204,13 @@ export default function AdminDashboard() {
             </svg>
           </div>
           <span>Total Students</span>
-          <strong>{students.length > 0 ? students.length.toLocaleString() : "8,542"}</strong>
+          <strong>
+            {studentStatus.loading ? (
+              <span style={{ opacity: 0.5 }}>...</span>
+            ) : (
+              students.length.toLocaleString()
+            )}
+          </strong>
         </article>
 
         <article className="platform-stat-card">
@@ -240,7 +221,13 @@ export default function AdminDashboard() {
             </svg>
           </div>
           <span>Total Faculty</span>
-          <strong>{faculty.length > 0 ? faculty.length.toLocaleString() : "124"}</strong>
+          <strong>
+            {facultyStatus.loading ? (
+              <span style={{ opacity: 0.5 }}>...</span>
+            ) : (
+              faculty.length.toLocaleString()
+            )}
+          </strong>
         </article>
 
         <article className="platform-stat-card">
@@ -251,7 +238,13 @@ export default function AdminDashboard() {
             </svg>
           </div>
           <span>Active Courses</span>
-          <strong>{courses.length > 0 ? courses.length.toLocaleString() : "38"}</strong>
+          <strong>
+            {courseStatus.loading ? (
+              <span style={{ opacity: 0.5 }}>...</span>
+            ) : (
+              courses.length.toLocaleString()
+            )}
+          </strong>
         </article>
 
         <article className="platform-stat-card">
@@ -264,7 +257,13 @@ export default function AdminDashboard() {
             </svg>
           </div>
           <span>Total Submissions</span>
-          <strong>{submissions.length > 0 ? submissions.length.toLocaleString() : "1,24,890"}</strong>
+          <strong>
+            {submissionStatus.loading ? (
+              <span style={{ opacity: 0.5 }}>...</span>
+            ) : (
+              submissions.length.toLocaleString()
+            )}
+          </strong>
         </article>
       </div>
 
@@ -292,22 +291,24 @@ export default function AdminDashboard() {
       {logStatus.error && <p className="form-status error">{logStatus.error}</p>}
 
       {/* Profile Management Section */}
-      <section className="platform-section-card" style={{ marginTop: "1rem" }}>
-        <div className="platform-section-head">
-          <div>
-            <p className="platform-section-label">Account settings</p>
-            <h2>Admin Profile Settings</h2>
+      {activeTab === "overview" && (
+        <section className="platform-section-card" style={{ marginTop: "1rem" }}>
+          <div className="platform-section-head">
+            <div>
+              <p className="platform-section-label">Account settings</p>
+              <h2>Admin Profile Settings</h2>
+            </div>
           </div>
-        </div>
-        <AccountSection
-          role="admin"
-          session={session}
-          saveSession={(nextSession) => {
-            saveAdminSession(nextSession);
-            setSession(nextSession);
-          }}
-        />
-      </section>
+          <AccountSection
+            role="admin"
+            session={session}
+            saveSession={(nextSession) => {
+              saveAdminSession(nextSession);
+              setSession(nextSession);
+            }}
+          />
+        </section>
+      )}
     </PlatformLayout>
   );
 }

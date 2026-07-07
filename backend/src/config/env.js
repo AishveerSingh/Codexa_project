@@ -10,10 +10,20 @@ dotenv.config({
 });
 
 function parseClientUrls(value) {
-  return (value || "http://localhost:5173")
+  const urls = (value || "http://localhost:5173")
     .split(",")
     .map((entry) => entry.trim().replace(/\/$/, ""))
     .filter(Boolean);
+
+  const extraUrls = [];
+  for (const url of urls) {
+    if (url.includes("://localhost:")) {
+      extraUrls.push(url.replace("://localhost:", "://127.0.0.1:"));
+    } else if (url.includes("://127.0.0.1:")) {
+      extraUrls.push(url.replace("://127.0.0.1:", "://localhost:"));
+    }
+  }
+  return [...new Set([...urls, ...extraUrls])];
 }
 
 export const env = {

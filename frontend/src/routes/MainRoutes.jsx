@@ -3,9 +3,7 @@ import AdminDashboard from "../pages/dashboard/AdminDashboard";
 import FacultyDashboard from "../pages/dashboard/FacultyDashboard";
 import StudentDashboard from "../pages/dashboard/StudentDashboard";
 import HomePage from "../pages/HomePage";
-import AdminLogin from "../pages/login/AdminLogin";
-import FacultyLogin from "../pages/login/FacultyLogin";
-import StudentLogin from "../pages/login/StudentLogin";
+import Login from "../pages/login/Login";
 import StudentAccountPage from "../pages/account/StudentAccountPage";
 import AdminAccountPage from "../pages/account/AdminAccountPage";
 import FacultyAccountPage from "../pages/account/FacultyAccountPage";
@@ -42,13 +40,7 @@ function ProtectedRoute({ role }) {
           : null;
 
   if (!session || !session.token || session.user?.role !== role) {
-    const loginPath =
-      role === "admin"
-        ? "/admin/login"
-        : role === "faculty"
-          ? "/faculty/login"
-          : "/student/login";
-    return <Navigate to={loginPath} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;
@@ -69,8 +61,9 @@ export default function MainRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<HomePage />} />
-      <Route path="/student/login" element={<StudentLogin />} />
-      <Route path="/studentLogin" element={<StudentLogin />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/student/login" element={<Navigate to="/login" replace />} />
+      <Route path="/studentLogin" element={<Navigate to="/login" replace />} />
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/courses" element={<StudentCourseList />} />
       <Route path="/student/courses/:courseId" element={<StudentCourseDetails />} />
@@ -80,7 +73,7 @@ export default function MainRoutes() {
       <Route path="/student/problems/:problemId" element={<StudentProblemDetails />} />
       <Route path="/student/problems/:problemId/solve" element={<StudentProblemDetails />} />
       <Route path="/studentDashboard" element={<StudentDashboard />} />
-      <Route path="/faculty/login" element={<FacultyLogin />} />
+      <Route path="/faculty/login" element={<Navigate to="/login" replace />} />
       <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
       <Route path="/faculty/courses" element={<FacultyCourseList />} />
       <Route path="/faculty/courses/:courseId" element={<FacultyCourseDetails />} />
@@ -90,7 +83,7 @@ export default function MainRoutes() {
       <Route path="/faculty/problems" element={<StudentProblemList />} />
       <Route path="/faculty/problems/:problemId/solve" element={<StudentProblemDetails />} />
       <Route path="/faculty/account" element={<FacultyAccountPage />} />
-      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/courses" element={<AdminCourseManager />} />
       <Route path="/admin/courses/:courseId" element={<AdminCourseDetails />} />

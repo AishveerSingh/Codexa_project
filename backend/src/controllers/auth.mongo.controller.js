@@ -220,7 +220,6 @@ export const registerUser = asyncHandler(async (req, res) => {
 });
 
 export const loginUser = asyncHandler(async (req, res) => {
-  const { role } = req.params;
   const { email, password } = req.body;
 
   if (!email?.trim() || !password?.trim()) {
@@ -234,9 +233,9 @@ export const loginUser = asyncHandler(async (req, res) => {
       `
         SELECT id, full_name, email, password_hash, role, created_at
         FROM users
-        WHERE email = $1 AND role = $2
+        WHERE email = $1
       `,
-      [email.trim().toLowerCase(), role]
+      [email.trim().toLowerCase()]
     );
 
     if (result.rows.length === 0) {
@@ -251,7 +250,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     }
 
     res.json({
-      message: `${role[0].toUpperCase()}${role.slice(1)} login successful.`,
+      message: `${user.role[0].toUpperCase()}${user.role.slice(1)} login successful.`,
       token: signAuthToken({ id: user.id, email: user.email, role: user.role }),
       user: await buildUserPayload(client, user)
     });

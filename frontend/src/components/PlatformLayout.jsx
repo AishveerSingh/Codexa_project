@@ -230,14 +230,12 @@ export function PlatformLayout({
   const handleLogout = () => {
     if (role === "student") {
       clearStudentSession();
-      navigate("/student/login");
     } else if (role === "faculty") {
       clearFacultySession();
-      navigate("/faculty/login");
     } else if (role === "admin") {
       clearAdminSession();
-      navigate("/admin/login");
     }
+    navigate("/login");
   };
 
   return (
@@ -245,14 +243,33 @@ export function PlatformLayout({
       <aside className="platform-sidebar">
         <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
           <Link className="platform-brand" to="/">
-            <span className="platform-brand-mark">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                <polyline points="2 17 12 22 22 17" />
-                <polyline points="2 12 12 17 22 12" />
+            <span className="platform-brand-mark" style={{ display: "flex", alignItems: "center" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" style={{ display: "inline-block", verticalAlign: "middle" }}>
+                <defs>
+                  <linearGradient id="codexa-grad-pl" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#3B82F6" />
+                    <stop offset="100%" stopColor="#8B5CF6" />
+                  </linearGradient>
+                </defs>
+                <path 
+                  d="M16.5 5.5 L12 2.9 L4 7.5 L4 16.5 L12 21.1 L16.5 18.5" 
+                  fill="none" 
+                  stroke="url(#codexa-grad-pl)" 
+                  strokeWidth="3.6" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+                <path 
+                  d="M8.5 9.5 L6 12 L8.5 14.5 M15.5 9.5 L18 12 L15.5 14.5 M13.5 8 L10.5 16" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
               </svg>
             </span>
-            <strong>Codexa</strong>
+            <strong>codexa</strong>
           </Link>
 
           <nav className="platform-nav" aria-label={`${role} navigation`}>

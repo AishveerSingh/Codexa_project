@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getAuthHeaders, getStudentSession, getFacultySession, getAdminSession } from "../../utils/session";
+import { useTheme } from "../../components/ThemeProvider";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
 const initialEditor = {
@@ -475,6 +476,8 @@ function formatExecutionMessage(result, successMessage) {
 
 export default function StudentProblemDetails() {
   const { problemId } = useParams();
+  const { theme, toggleTheme } = useTheme();
+  const isDarkTheme = theme === "dark";
   const session = getStudentSession() || getFacultySession() || getAdminSession();
   const student = session?.user;
   const userRole = student?.role || "student";
@@ -529,6 +532,8 @@ export default function StudentProblemDetails() {
     });
   }
   const [isDraftReady, setIsDraftReady] = useState(false);
+  const [isEditorMaximized, setIsEditorMaximized] = useState(false);
+  const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [timerState, setTimerState] = useState(initialTimerState);
   const [showRunDetails, setShowRunDetails] = useState(false);
@@ -538,6 +543,54 @@ export default function StudentProblemDetails() {
   const isSolved = useMemo(() => {
     return submissionHistory.some((submission) => submission.status === "accepted");
   }, [submissionHistory]);
+
+  function handleFormatCode() {
+    if (!editor.sourceCode) return;
+    const lines = editor.sourceCode.split("\n");
+    let indentLevel = 0;
+    const formattedLines = lines.map(line => {
+      let trimmed = line.trim();
+      if (trimmed.startsWith("}") || trimmed.startsWith("]")) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+      const indentedLine = "  ".repeat(indentLevel) + trimmed;
+      if (trimmed.endsWith("{") || trimmed.endsWith("[") || (trimmed.endsWith(":") && editor.language === "python")) {
+        indentLevel += 1;
+      }
+      return indentedLine;
+    });
+    setEditor(prev => ({
+      ...prev,
+      sourceCode: formattedLines.join("\n")
+    }));
+    showToast("success", "Formatted", "Code formatted successfully.");
+  }
+
+  function handleSaveCode() {
+    if (!problemId) return;
+    const savedDrafts = readStoredObject(editorDraftStorageKey);
+    savedDrafts[problemId] = {
+      language: editor.language,
+      sourceCode: editor.sourceCode
+    };
+    localStorage.setItem(editorDraftStorageKey, JSON.stringify(savedDrafts));
+    showToast("success", "Saved", "Code saved to local draft successfully.");
+  }
+
+  function handleShowTemplates() {
+    setLeftActiveTab("solutions");
+    showToast("info", "Solutions Panel", "Switched to solutions templates pane.");
+  }
+
+  function handleToggleMaximize() {
+    setIsEditorMaximized(prev => !prev);
+    setIsEditorCollapsed(false);
+  }
+
+  function handleToggleCollapse() {
+    setIsEditorCollapsed(prev => !prev);
+    setIsEditorMaximized(false);
+  }
 
   function showToast(type, title, message) {
     setToast({
@@ -755,36 +808,18 @@ export default function StudentProblemDetails() {
       return;
     }
 
-    const solvedTimeKey = getSolvedTimeStorageKey(problemId);
-    const savedSolvedTime = localStorage.getItem(solvedTimeKey);
-
-    if (isSolved) {
-      if (savedSolvedTime !== null) {
-        const parsedSolvedTime = Number.parseInt(savedSolvedTime, 10);
-        const normalizedSolvedTime = Number.isNaN(parsedSolvedTime) ? 0 : parsedSolvedTime;
-
-        setElapsedSeconds(normalizedSolvedTime);
-        setTimerState({
-          isRunning: false,
-          startedAt: 0,
-          elapsedBeforePause: normalizedSolvedTime
-        });
-      }
-      return;
-    }
-
     const savedTimers = readStoredObject(problemTimerStorageKey);
     const savedTimer = savedTimers[problemId];
     const normalizedTimer =
       savedTimer && typeof savedTimer === "object"
         ? {
-            isRunning: savedTimer.isRunning ?? false,
-            startedAt: savedTimer.startedAt ?? 0,
+            isRunning: savedTimer.isRunning ?? true,
+            startedAt: savedTimer.startedAt ?? (savedTimer.isRunning ? Date.now() : 0),
             elapsedBeforePause: savedTimer.elapsedBeforePause ?? 0
           }
         : {
-            isRunning: false,
-            startedAt: 0,
+            isRunning: true,
+            startedAt: Date.now(),
             elapsedBeforePause: typeof savedTimer === "number" ? savedTimer : 0
           };
 
@@ -794,46 +829,10 @@ export default function StudentProblemDetails() {
     }
 
     setTimerState(normalizedTimer);
-  }, [problemId, isSolved]);
-
-  useEffect(() => {
-    if (isSolved && problemId) {
-      const solvedTimeKey = getSolvedTimeStorageKey(problemId);
-      const savedSolvedTime = localStorage.getItem(solvedTimeKey);
-
-      let frozenElapsedSeconds = Number.parseInt(savedSolvedTime || "", 10);
-
-      if (Number.isNaN(frozenElapsedSeconds)) {
-        frozenElapsedSeconds =
-          timerState.elapsedBeforePause +
-          (timerState.isRunning
-            ? Math.max(0, Math.floor((Date.now() - timerState.startedAt) / 1000))
-            : 0);
-        localStorage.setItem(solvedTimeKey, String(frozenElapsedSeconds));
-      }
-
-      if (
-        timerState.isRunning ||
-        timerState.startedAt !== 0 ||
-        timerState.elapsedBeforePause !== frozenElapsedSeconds
-      ) {
-        setTimerState({
-          isRunning: false,
-          startedAt: 0,
-          elapsedBeforePause: frozenElapsedSeconds
-        });
-      }
-
-      setElapsedSeconds(frozenElapsedSeconds);
-    }
-  }, [isSolved, problemId, timerState]);
+  }, [problemId]);
 
   useEffect(() => {
     if (!problemId) {
-      return undefined;
-    }
-
-    if (isSolved) {
       return undefined;
     }
 
@@ -859,7 +858,7 @@ export default function StudentProblemDetails() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [isSolved, problemId, timerState]);
+  }, [problemId, timerState]);
 
   function updateSuggestionState(sourceCode, cursorPosition, language) {
     const suggestionResult = buildSuggestions(sourceCode, cursorPosition, language);
@@ -1100,6 +1099,7 @@ export default function StudentProblemDetails() {
 
       if (data.submission?.status === "accepted") {
         showToast("success", "Accepted", "Submission passed hidden test cases.");
+        handleTimerPause();
       } else {
         showToast(
           "error",
@@ -1126,6 +1126,7 @@ export default function StudentProblemDetails() {
     }
 
     setIsRunning(true);
+    setRunResults(null);
     setRunMessage("");
     setSubmissionMessage("");
     setLatestExecutionDetails("");
@@ -1186,7 +1187,7 @@ export default function StudentProblemDetails() {
 
   function handleTimerStart() {
     setTimerState((currentTimerState) => {
-      if (isSolved || currentTimerState.isRunning) {
+      if (currentTimerState.isRunning) {
         return currentTimerState;
       }
 
@@ -1200,7 +1201,7 @@ export default function StudentProblemDetails() {
 
   function handleTimerPause() {
     setTimerState((currentTimerState) => {
-      if (isSolved || !currentTimerState.isRunning) {
+      if (!currentTimerState.isRunning) {
         return currentTimerState;
       }
 
@@ -1267,12 +1268,37 @@ export default function StudentProblemDetails() {
       <section className="detail-card student-detail-card student-workspace-card">
         <header className="leetcode-topbar">
           <div className="leetcode-topbar-left">
-            <span className="leetcode-logo">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style={{ marginRight: "0.2rem" }}><path d="M13.483 0a1.374 1.374 0 0 0-.961.414l-9.777 9.778a1.375 1.375 0 0 0 0 1.945l1.945 1.945a1.375 1.375 0 0 0 1.945 0l7.832-7.831 2.917 2.917a1.375 1.375 0 0 0 1.945 0l1.945-1.945a1.375 1.375 0 0 0 0-1.945L14.444.414A1.374 1.374 0 0 0 13.483 0zm-8.8 14.444a1.375 1.375 0 0 0-1.945 0l-1.945 1.945a1.375 1.375 0 0 0 0 1.945l9.778 9.778a1.375 1.375 0 0 0 1.945 0l1.945-1.945a1.375 1.375 0 0 0 0-1.945l-7.832-7.832-1.946-1.946z"/></svg>
-              Codexa
+            <span className="leetcode-logo" style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style={{ display: "inline-block", verticalAlign: "middle" }}>
+                <defs>
+                  <linearGradient id="codexa-grad-ws" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#3B82F6" />
+                    <stop offset="100%" stopColor="#8B5CF6" />
+                  </linearGradient>
+                </defs>
+                <path 
+                  d="M16.5 5.5 L12 2.9 L4 7.5 L4 16.5 L12 21.1 L16.5 18.5" 
+                  fill="none" 
+                  stroke="url(#codexa-grad-ws)" 
+                  strokeWidth="3.6" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+                <path 
+                  d="M8.5 9.5 L6 12 L8.5 14.5 M15.5 9.5 L18 12 L15.5 14.5 M13.5 8 L10.5 16" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+              codexa
             </span>
             <span style={{ color: "#2d2d2d", margin: "0 0.5rem" }}>|</span>
-            <span style={{ fontSize: "0.85rem", fontWeight: "500" }}>Daily Question</span>
+            <span style={{ fontSize: "0.85rem", fontWeight: "500" }}>
+              {currentProblemIndex >= 0 ? `Problem ${currentProblemIndex + 1}` : "Problem"}
+            </span>
             
             <Link
               className={`leetcode-nav-btn ${previousProblem ? "" : "disabled"}`}
@@ -1323,11 +1349,52 @@ export default function StudentProblemDetails() {
             </button>
           </div>
 
-          <div className="leetcode-topbar-right">
+          <div className="leetcode-topbar-right" style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            {/* Inline Theme Toggle on the left side of the timer */}
+            <button
+              type="button"
+              className="leetcode-nav-btn"
+              onClick={toggleTheme}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: isDarkTheme ? "#FFA116" : "#FF8F00",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.25rem",
+                transition: "transform 0.3s ease"
+              }}
+              title={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkTheme ? (
+                /* Sun Icon */
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ) : (
+                /* Moon Icon */
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
+
             <div className="leetcode-timer-wrapper" style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
               <div className={`leetcode-timer-chip ${!timerState.isRunning ? "paused" : ""}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-                {formatElapsedTime(elapsedSeconds)}
+                <span style={{ minWidth: "42px", textAlign: "center", fontFamily: "SF Mono, Consolas, monospace", fontVariantNumeric: "tabular-nums", display: "inline-block" }}>
+                  {formatElapsedTime(elapsedSeconds)}
+                </span>
               </div>
               <button
                 type="button"
@@ -1350,7 +1417,6 @@ export default function StudentProblemDetails() {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
               </button>
             </div>
-            <button className="leetcode-premium-btn">Premium</button>
           </div>
         </header>
 
@@ -1416,7 +1482,7 @@ export default function StudentProblemDetails() {
                   <>
                     <div className="workspace-problem-header">
                       <div>
-                        <h1 style={{ fontSize: "1.45rem", fontWeight: "700", marginBottom: "0.75rem", color: "#f3f4f6" }}>
+                        <h1 style={{ fontSize: "1.45rem", fontWeight: "700", marginBottom: "0.75rem" }}>
                           {currentProblemIndex >= 0 ? `${currentProblemIndex + 1}. ${problem.title}` : problem.title}
                         </h1>
                       </div>
@@ -1449,7 +1515,7 @@ export default function StudentProblemDetails() {
                       <div className="workspace-section-heading">
                         <h3>Constraints</h3>
                       </div>
-                      <div className="workspace-note-card" style={{ background: "#262626", border: "none" }}>
+                      <div className="workspace-note-card">
                         <p style={{ fontFamily: "monospace", fontSize: "0.9rem" }}>{problem.constraints_text || "No constraints provided."}</p>
                       </div>
                     </div>
@@ -1518,138 +1584,162 @@ export default function StudentProblemDetails() {
                       <h2>Execution Results</h2>
                     </div>
 
-                    {/* Run Results */}
-                    {runResults && (
+                    {isRunning || isSubmitting ? (
+                      <div className="workspace-loading-result" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem 2rem", gap: "1rem" }}>
+                        <div className="leetcode-spinner" style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "50%",
+                          border: "3px solid rgba(59, 130, 246, 0.15)",
+                          borderTopColor: "#8B5CF6",
+                          animation: "leetcode-spin 0.8s linear infinite"
+                        }}></div>
+                        <style>{`
+                          @keyframes leetcode-spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                          }
+                        `}</style>
+                        <p style={{ color: "#8a8a8a", fontSize: "0.9rem", fontWeight: "500" }}>
+                          {isRunning ? "Running sample test cases..." : "Submitting code & analyzing results..."}
+                        </p>
+                      </div>
+                    ) : (
                       <>
-                        {runMessage ? <p className={`form-status ${runMessageClassName}`}>{runMessage}</p> : null}
-                        <div className="workspace-result-overview testcase-overview">
-                          <article className="workspace-result-card">
-                            <span>Run verdict</span>
-                            <strong className={runMessageClassName}>{runResults.verdictLabel || runResults.status.replaceAll("_", " ")}</strong>
-                          </article>
-                          <article className="workspace-result-card">
-                            <span>Passed</span>
-                            <strong>
-                              {runResults.passedTestCases}/{runResults.totalTestCases}
-                            </strong>
-                          </article>
-                          <article className="workspace-result-card">
-                            <span>Error type</span>
-                            <strong>{latestRunErrorType}</strong>
-                          </article>
-                          <article className="workspace-result-card">
-                            <span>Runtime</span>
-                            <strong>{runResults.executionTimeMs ?? "-"} ms</strong>
-                          </article>
-                        </div>
+                        {/* Run Results */}
+                        {runResults && (
+                          <>
+                            {runMessage ? <p className={`form-status ${runMessageClassName}`}>{runMessage}</p> : null}
+                            <div className="workspace-result-overview testcase-overview">
+                              <article className="workspace-result-card">
+                                <span>Run verdict</span>
+                                <strong className={runMessageClassName}>{runResults.verdictLabel || runResults.status.replaceAll("_", " ")}</strong>
+                              </article>
+                              <article className="workspace-result-card">
+                                <span>Passed</span>
+                                <strong>
+                                  {runResults.passedTestCases}/{runResults.totalTestCases}
+                                </strong>
+                              </article>
+                              <article className="workspace-result-card">
+                                <span>Error type</span>
+                                <strong>{latestRunErrorType}</strong>
+                              </article>
+                              <article className="workspace-result-card">
+                                <span>Runtime</span>
+                                <strong>{runResults.executionTimeMs ?? "-"} ms</strong>
+                              </article>
+                            </div>
 
-                        <div className="sample-case-list testcase-result-list" style={{ marginTop: "1rem" }}>
-                          {(runResults.testCaseResults || []).map((testCaseResult, index) => (
-                            <article className="sample-case-card testcase-result-card" key={testCaseResult.id || index}>
-                              <div className="sample-case-header">
-                                <strong>Test case {index + 1}</strong>
-                                <span
-                                  className={`status-pill ${
-                                    testCaseResult.passed ? "accepted" : "wrong_answer"
-                                  }`}
-                                >
-                                  {testCaseResult.passed ? "passed" : "failed"}
-                                </span>
-                              </div>
-                              <div className="sample-case-block">
-                                <span>Input</span>
-                                <p className="history-snippet">{testCaseResult.input || "(empty)"}</p>
-                              </div>
-                              <div className="sample-case-block">
-                                <span>Expected output</span>
-                                <p className="history-snippet">{testCaseResult.expectedOutput || "(empty)"}</p>
-                              </div>
-                              <div className="sample-case-block">
-                                <span>Your output</span>
-                                <p className="history-snippet">{testCaseResult.actualOutput || "(empty)"}</p>
-                              </div>
-                              {testCaseResult.stderr ? (
-                                <div className="sample-case-block">
-                                  <span>Error output</span>
-                                  <p className="history-snippet">{testCaseResult.stderr}</p>
+                            <div className="sample-case-list testcase-result-list" style={{ marginTop: "1rem" }}>
+                              {(runResults.testCaseResults || []).map((testCaseResult, index) => (
+                                <article className="sample-case-card testcase-result-card" key={testCaseResult.id || index}>
+                                  <div className="sample-case-header">
+                                    <strong>Test case {index + 1}</strong>
+                                    <span
+                                      className={`status-pill ${
+                                        testCaseResult.passed ? "accepted" : "wrong_answer"
+                                      }`}
+                                    >
+                                      {testCaseResult.passed ? "passed" : "failed"}
+                                    </span>
+                                  </div>
+                                  <div className="sample-case-block">
+                                    <span>Input</span>
+                                    <p className="history-snippet">{testCaseResult.input || "(empty)"}</p>
+                                  </div>
+                                  <div className="sample-case-block">
+                                    <span>Expected output</span>
+                                    <p className="history-snippet">{testCaseResult.expectedOutput || "(empty)"}</p>
+                                  </div>
+                                  <div className="sample-case-block">
+                                    <span>Your output</span>
+                                    <p className="history-snippet">{testCaseResult.actualOutput || "(empty)"}</p>
+                                  </div>
+                                  {testCaseResult.stderr ? (
+                                    <div className="sample-case-block">
+                                      <span>Error output</span>
+                                      <p className="history-snippet">{testCaseResult.stderr}</p>
+                                    </div>
+                                  ) : null}
+                                </article>
+                              ))}
+                            </div>
+
+                            {runResults.stderr ? (
+                              <div className="workspace-subsection">
+                                <div className="workspace-section-heading">
+                                  <h3>Run error output</h3>
                                 </div>
-                              ) : null}
-                            </article>
-                          ))}
-                        </div>
+                                <pre className="history-snippet workspace-console-output">{runResults.stderr}</pre>
+                              </div>
+                            ) : null}
+                          </>
+                        )}
 
-                        {runResults.stderr ? (
-                          <div className="workspace-subsection">
-                            <div className="workspace-section-heading">
-                              <h3>Run error output</h3>
+                        {/* Submit Results */}
+                        {latestSubmission && !runResults && (
+                          <>
+                            {submissionMessage ? (
+                              <p className={`form-status ${submissionMessageClassName}`}>{submissionMessage}</p>
+                            ) : null}
+
+                            <div className="workspace-result-overview">
+                              <article className="workspace-result-card">
+                                <span>Latest verdict</span>
+                                <strong className={submissionMessageClassName}>
+                                  {latestSubmitExecution?.verdictLabel ||
+                                    latestSubmission.status.replaceAll("_", " ")}
+                                </strong>
+                              </article>
+                              <article className="workspace-result-card">
+                                <span>Passed tests</span>
+                                <strong>
+                                  {`${latestSubmission.passed_test_cases}/${latestSubmission.total_test_cases}`}
+                                </strong>
+                              </article>
+                              <article className="workspace-result-card">
+                                <span>Failed tests</span>
+                                <strong>{failedTestCount}</strong>
+                              </article>
+                              <article className="workspace-result-card">
+                                <span>Error type</span>
+                                <strong>{latestSubmitErrorType}</strong>
+                              </article>
+                              <article className="workspace-result-card">
+                                <span>Runtime</span>
+                                <strong>{`${latestSubmission.execution_time_ms ?? "-"} ms`}</strong>
+                              </article>
                             </div>
-                            <pre className="history-snippet workspace-console-output">{runResults.stderr}</pre>
-                          </div>
-                        ) : null}
+
+                            {latestExecutionDetails ? (
+                              <div className="workspace-subsection workspace-result-log">
+                                <div className="workspace-section-heading">
+                                  <h3>Latest execution log</h3>
+                                </div>
+                                <pre className="history-snippet workspace-console-output">{latestExecutionDetails}</pre>
+                              </div>
+                            ) : null}
+
+                            {latestSubmitExecution?.stderr ? (
+                              <div className="workspace-subsection">
+                                <div className="workspace-section-heading">
+                                  <h3>Error output</h3>
+                                </div>
+                                <pre className="history-snippet workspace-console-output">
+                                  {latestSubmitExecution.stderr}
+                                </pre>
+                              </div>
+                            ) : null}
+                          </>
+                        )}
+
+                        {!runResults && !latestSubmission && (
+                          <p className="dashboard-copy">
+                            Use Run to execute sample test cases, or Submit to evaluate against all test cases.
+                          </p>
+                        )}
                       </>
-                    )}
-
-                    {/* Submit Results */}
-                    {latestSubmission && !runResults && (
-                      <>
-                        {submissionMessage ? (
-                          <p className={`form-status ${submissionMessageClassName}`}>{submissionMessage}</p>
-                        ) : null}
-
-                        <div className="workspace-result-overview">
-                          <article className="workspace-result-card">
-                            <span>Latest verdict</span>
-                            <strong className={submissionMessageClassName}>
-                              {latestSubmitExecution?.verdictLabel ||
-                                latestSubmission.status.replaceAll("_", " ")}
-                            </strong>
-                          </article>
-                          <article className="workspace-result-card">
-                            <span>Passed tests</span>
-                            <strong>
-                              {`${latestSubmission.passed_test_cases}/${latestSubmission.total_test_cases}`}
-                            </strong>
-                          </article>
-                          <article className="workspace-result-card">
-                            <span>Failed tests</span>
-                            <strong>{failedTestCount}</strong>
-                          </article>
-                          <article className="workspace-result-card">
-                            <span>Error type</span>
-                            <strong>{latestSubmitErrorType}</strong>
-                          </article>
-                          <article className="workspace-result-card">
-                            <span>Runtime</span>
-                            <strong>{`${latestSubmission.execution_time_ms ?? "-"} ms`}</strong>
-                          </article>
-                        </div>
-
-                        {latestExecutionDetails ? (
-                          <div className="workspace-subsection workspace-result-log">
-                            <div className="workspace-section-heading">
-                              <h3>Latest execution log</h3>
-                            </div>
-                            <pre className="history-snippet workspace-console-output">{latestExecutionDetails}</pre>
-                          </div>
-                        ) : null}
-
-                        {latestSubmitExecution?.stderr ? (
-                          <div className="workspace-subsection">
-                            <div className="workspace-section-heading">
-                              <h3>Error output</h3>
-                            </div>
-                            <pre className="history-snippet workspace-console-output">
-                              {latestSubmitExecution.stderr}
-                            </pre>
-                          </div>
-                        ) : null}
-                      </>
-                    )}
-
-                    {!runResults && !latestSubmission && (
-                      <p className="dashboard-copy">
-                        Use Run to execute sample test cases, or Submit to evaluate against all test cases.
-                      </p>
                     )}
                   </div>
                 )}
@@ -1689,52 +1779,61 @@ export default function StudentProblemDetails() {
             </article>
 
             <article className="detail-block workspace-column editor-column">
-              <div className="leetcode-tab-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingRight: "0.5rem" }}>
-                <span className="leetcode-tab active" style={{ cursor: "default", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                  Code
+              <div className="leetcode-tab-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingRight: "0.5rem", height: "38px" }}>
+                <span className="leetcode-tab active" style={{ cursor: "default", display: "flex", alignItems: "center", gap: "0.4rem", padding: "0 0.8rem", height: "100%", borderBottom: "2px solid #10b981" }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                  <span style={{ fontWeight: "600", fontSize: "0.85rem" }}>Code</span>
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", color: "#8a8a8a" }}>
-                  <svg className="leetcode-icon-btn" title="Toggle Fullscreen" style={{ cursor: "pointer", opacity: 0.7 }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                  <svg className="leetcode-icon-btn" title="Collapse" style={{ cursor: "pointer", opacity: 0.7 }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
               </div>
 
-              <div className="workspace-column-header workspace-editor-header" style={{ padding: "0.5rem 1rem", borderBottom: "1px solid #2d2d2d", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="workspace-column-header workspace-editor-header" style={{ padding: "0.5rem 1rem", display: "flex", justifyContent: "space-between", alignItems: "center", height: "38px" }}>
                 <div className="editor-toolbar" style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                  <select
-                    id="language"
-                    name="language"
-                    value={editor.language}
-                    onChange={handleEditorChange}
-                    style={{ background: "transparent", border: "none", color: "#eff1f5", padding: "0.25rem 0.5rem 0.25rem 0", borderRadius: "4px", outline: "none", cursor: "pointer", fontWeight: "500", fontSize: "0.85rem" }}
-                  >
-                    <option value="python" style={{ background: "#1e1e1e" }}>Python</option>
-                    <option value="cpp" style={{ background: "#1e1e1e" }}>C++</option>
-                    <option value="java" style={{ background: "#1e1e1e" }}>Java</option>
-                    <option value="javascript" style={{ background: "#1e1e1e" }}>JavaScript</option>
-                  </select>
-                  <span style={{ color: "#8a8a8a", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                    <select
+                      id="language"
+                      name="language"
+                      value={editor.language}
+                      onChange={handleEditorChange}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#eff1f5",
+                        padding: "0.25rem 1.25rem 0.25rem 0.5rem",
+                        borderRadius: "4px",
+                        outline: "none",
+                        cursor: "pointer",
+                        fontWeight: "500",
+                        fontSize: "0.85rem",
+                        appearance: "none",
+                        WebkitAppearance: "none",
+                        MozAppearance: "none"
+                      }}
+                    >
+                      <option value="python" style={{ background: "#1e1e1e" }}>Python</option>
+                      <option value="cpp" style={{ background: "#1e1e1e" }}>C++</option>
+                      <option value="java" style={{ background: "#1e1e1e" }}>Java</option>
+                      <option value="javascript" style={{ background: "#1e1e1e" }}>JavaScript</option>
+                    </select>
+                    <span style={{ position: "absolute", right: "2px", pointerEvents: "none", color: "#8a8a8a", fontSize: "0.6rem" }}>▼</span>
+                  </div>
+                  <span style={{ color: "#8a8a8a", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span style={{ color: "#10b981", fontSize: "1.2rem", lineHeight: "1", display: "inline-block", marginTop: "-2px" }}>•</span>
                     Auto
                   </span>
                 </div>
                 
                 <div className="editor-actions-right" style={{ display: "flex", alignItems: "center", gap: "1rem", color: "#8a8a8a" }}>
-                  <button type="button" className="leetcode-nav-btn" title="Format code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                  <button type="button" className="leetcode-nav-btn" onClick={handleFormatCode} title="Format code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
                   </button>
-                  <button type="button" className="leetcode-nav-btn" title="Save code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                  <button type="button" className="leetcode-nav-btn" onClick={handleSaveCode} title="Save code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                   </button>
-                  <button type="button" className="leetcode-nav-btn" title="Show templates" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                  <button type="button" className="leetcode-nav-btn" onClick={handleShowTemplates} title="Show templates" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 18l6-6-6-6M8 6L2 12l6 6"/></svg>
                   </button>
                   <button type="button" className="leetcode-nav-btn" onClick={handleResetCode} title="Reset code" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
-                  </button>
-                  <button type="button" className="leetcode-nav-btn" title="Settings" style={{ background: "none", border: "none", padding: 0, color: "inherit", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                   </button>
                 </div>
               </div>
@@ -1832,10 +1931,7 @@ export default function StudentProblemDetails() {
                 </div>
               </form>
 
-              <div className="editor-status-bar">
-                <span>Saved</span>
-                <span>Ln {cursorPos.line}, Col {cursorPos.column}</span>
-              </div>
+
             </article>
           </section>
         ) : null}

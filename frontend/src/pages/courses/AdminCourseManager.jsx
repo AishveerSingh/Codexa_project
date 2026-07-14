@@ -29,17 +29,11 @@ const javaCourseTemplate = {
 };
 
 function withFallbackOptions(filterData) {
-  // Always merge static defaults with DB values so all standard options are visible
-  // even when only a subset exist in student_profiles.
-  const dbBranches = filterData.branches || [];
-  const dbSections = filterData.sections || [];
-  const dbSemesters = filterData.semesters || [];
-
   return {
-    branches: [...new Set([...branchOptions, ...dbBranches])],
-    sections: [...new Set([...sectionOptions, ...dbSections])],
-    semesters: [...new Set([...buildSemesterOptions(), ...dbSemesters])].sort((a, b) => a - b),
+    branches: filterData.branches?.length ? filterData.branches : branchOptions,
+    sections: filterData.sections?.length ? filterData.sections : sectionOptions,
     batches: filterData.batches?.length ? filterData.batches : initialForm.batchTargets,
+    semesters: filterData.semesters?.length ? filterData.semesters : buildSemesterOptions(),
     faculty: filterData.faculty ?? []
   };
 }
@@ -114,7 +108,6 @@ export default function AdminCourseManager() {
     error: "",
     success: ""
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedAudienceSummary = `${form.branchTargets.length} branch${form.branchTargets.length === 1 ? "" : "es"}, ${
     form.semesterTargets.length
@@ -206,28 +199,6 @@ export default function AdminCourseManager() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    // Client-side validation
-    if (form.branchTargets.length === 0 || form.semesterTargets.length === 0 ||
-        form.sectionTargets.length === 0 || form.batchTargets.length === 0) {
-      setStatus((current) => ({
-        ...current,
-        error: "Please select at least one branch, semester, section, and batch.",
-        success: ""
-      }));
-      return;
-    }
-    if (form.facultyIds.length === 0) {
-      setStatus((current) => ({
-        ...current,
-        error: "Please assign at least one faculty member to the course.",
-        success: ""
-      }));
-      return;
-    }
-
-    setIsSubmitting(true);
-    setStatus((current) => ({ ...current, error: "", success: "" }));
-
     try {
       const path = editingCourseId ? `/courses/${editingCourseId}` : "/courses";
       const method = editingCourseId ? "PUT" : "POST";
@@ -254,8 +225,6 @@ export default function AdminCourseManager() {
         error: error.message,
         success: ""
       }));
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
@@ -363,22 +332,13 @@ export default function AdminCourseManager() {
                 <button
                   className="auth-button admin-button compact-button"
                   type="button"
-                  onClick={() => addSelection("branchTargets", pickerValues.branch.trim().toUpperCase())}
-                  disabled={!pickerValues.branch.trim()}
+                  onClick={() => addSelection("branchTargets", pickerValues.branch)}
+                  disabled={!pickerValues.branch}
                 >
                   Add
                 </button>
               </div>
-              <input
-                placeholder="Or type a custom branch (e.g. AIML, MECH)"
-                value={pickerValues.branch}
-                onChange={(event) =>
-                  setPickerValues((current) => ({
-                    ...current,
-                    branch: event.target.value
-                  }))
-                }
-              />
+              {filters.branches.length === 0 ? <p className="dashboard-copy">No branch options available.</p> : null}
               <div className="pill-row selection-pill-row">
                 {form.branchTargets.map((branch) => (
                   <button
@@ -412,28 +372,13 @@ export default function AdminCourseManager() {
                 <button
                   className="auth-button admin-button compact-button"
                   type="button"
-                  onClick={() => {
-                    const num = Number(pickerValues.semester);
-                    if (Number.isFinite(num) && num > 0) addSelection("semesterTargets", num);
-                  }}
-                  disabled={!pickerValues.semester || !Number.isFinite(Number(pickerValues.semester)) || Number(pickerValues.semester) <= 0}
+                  onClick={() => addSelection("semesterTargets", Number(pickerValues.semester))}
+                  disabled={!pickerValues.semester}
                 >
                   Add
                 </button>
               </div>
-              <input
-                type="number"
-                min="1"
-                max="12"
-                placeholder="Or type a custom semester number"
-                value={pickerValues.semester}
-                onChange={(event) =>
-                  setPickerValues((current) => ({
-                    ...current,
-                    semester: event.target.value
-                  }))
-                }
-              />
+              {filters.semesters.length === 0 ? <p className="dashboard-copy">No semester options available.</p> : null}
               <div className="pill-row selection-pill-row">
                 {form.semesterTargets.map((semester) => (
                   <button
@@ -467,22 +412,13 @@ export default function AdminCourseManager() {
                 <button
                   className="auth-button admin-button compact-button"
                   type="button"
-                  onClick={() => addSelection("sectionTargets", pickerValues.section.trim().toUpperCase())}
-                  disabled={!pickerValues.section.trim()}
+                  onClick={() => addSelection("sectionTargets", pickerValues.section)}
+                  disabled={!pickerValues.section}
                 >
                   Add
                 </button>
               </div>
-              <input
-                placeholder="Or type a custom section (e.g. E, F)"
-                value={pickerValues.section}
-                onChange={(event) =>
-                  setPickerValues((current) => ({
-                    ...current,
-                    section: event.target.value
-                  }))
-                }
-              />
+              {filters.sections.length === 0 ? <p className="dashboard-copy">No section options available.</p> : null}
               <div className="pill-row selection-pill-row">
                 {form.sectionTargets.map((section) => (
                   <button
@@ -600,8 +536,8 @@ export default function AdminCourseManager() {
           </div>
 
           <div className="platform-section-actions">
-            <button className="auth-button admin-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (editingCourseId ? "Saving…" : "Creating…") : (editingCourseId ? "Save course" : "Create course")}
+            <button className="auth-button admin-button" type="submit">
+              {editingCourseId ? "Save course" : "Create course"}
             </button>
             {editingCourseId ? (
               <button
@@ -610,14 +546,6 @@ export default function AdminCourseManager() {
                 onClick={() => {
                   setEditingCourseId("");
                   setForm(initialForm);
-                  setPickerValues({
-                    branch: filters.branches[0] || initialForm.branchTargets[0],
-                    semester: String(filters.semesters[0] || initialForm.semesterTargets[0]),
-                    section: filters.sections[0] || initialForm.sectionTargets[0],
-                    batch: filters.batches[0] || initialForm.batchTargets[0],
-                    facultyId: ""
-                  });
-                  setStatus({ loading: false, error: "", success: "" });
                 }}
               >
                 Cancel edit

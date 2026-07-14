@@ -11,8 +11,7 @@ function normalizeRequestError(error, fallbackMessage = "Request failed.") {
   }
 
   if (rawMessage === "Failed to fetch") {
-    const cleanBaseUrl = apiBaseUrl.replace(/\/api$/, "");
-    return `Backend is unreachable. Make sure the API server is running on ${cleanBaseUrl}.`;
+    return "Backend is unreachable. Make sure the API server is running on http://localhost:5000.";
   }
 
   return rawMessage;

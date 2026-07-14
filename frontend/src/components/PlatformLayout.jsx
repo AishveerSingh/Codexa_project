@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   clearStudentSession,
@@ -189,7 +189,6 @@ export function PlatformLayout({
   sidebarNote,
   showQuickActions
 }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const activeTab = queryParams.get("tab") || "overview";
@@ -212,7 +211,6 @@ export function PlatformLayout({
   const user = session?.user;
 
   useEffect(() => {
-    setIsSidebarOpen(false);
     const items = categories.flatMap((c) => c.items);
     const activeItem = [...items]
       .sort((a, b) => b.to.length - a.to.length)
@@ -242,57 +240,7 @@ export function PlatformLayout({
 
   return (
     <main className={`platform-page ${role}-platform-page`}>
-      {/* Mobile Header Bar */}
-      <div className="platform-mobile-header">
-        <button
-          type="button"
-          className="platform-mobile-menu-btn"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          aria-label="Toggle navigation menu"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
-        <Link className="platform-mobile-brand" to="/">
-          <span className="platform-brand-mark" style={{ display: "flex", alignItems: "center", marginRight: "0.25rem" }}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" style={{ display: "inline-block", verticalAlign: "middle" }}>
-              <defs>
-                <linearGradient id="codexa-grad-pl-mob" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3B82F6" />
-                  <stop offset="100%" stopColor="#8B5CF6" />
-                </linearGradient>
-              </defs>
-              <path 
-                d="M16.5 5.5 L12 2.9 L4 7.5 L4 16.5 L12 21.1 L16.5 18.5" 
-                fill="none" 
-                stroke="url(#codexa-grad-pl-mob)" 
-                strokeWidth="3.6" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-              <path 
-                d="M8.5 9.5 L6 12 L8.5 14.5 M15.5 9.5 L18 12 L15.5 14.5 M13.5 8 L10.5 16" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2.5" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <strong>codexa</strong>
-        </Link>
-        <div style={{ width: "20px" }} />
-      </div>
-
-      {isSidebarOpen && (
-        <div className="platform-sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />
-      )}
-
-      <aside className={`platform-sidebar ${isSidebarOpen ? "open" : ""}`}>
+      <aside className="platform-sidebar">
         <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
           <Link className="platform-brand" to="/">
             <span className="platform-brand-mark" style={{ display: "flex", alignItems: "center" }}>

@@ -176,105 +176,6 @@ export default function CourseProblemWorkspace({ role, session }) {
 
   const latestSubmission = problem?.submissions?.[0] || null;
 
-  function handleCodeKeyDown(event) {
-    const textarea = event.currentTarget;
-    const { value, selectionStart, selectionEnd } = textarea;
-    const indentStr = workspace.language === "python" ? "    " : "  ";
-    const nextCharacter = value[selectionEnd] || "";
-
-    if (event.key === "Tab") {
-      event.preventDefault();
-
-      const actualSelectionEnd = selectionEnd > selectionStart && value[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd;
-      const startLineIndex = value.lastIndexOf("\n", selectionStart - 1) + 1;
-      const endLineIndex = value.indexOf("\n", actualSelectionEnd);
-      const endLineContentEnd = endLineIndex === -1 ? value.length : endLineIndex;
-
-      const hasNewlineInSelection = selectionStart !== selectionEnd && value.slice(selectionStart, actualSelectionEnd).includes("\n");
-
-      if (hasNewlineInSelection || event.shiftKey) {
-        const lines = value.slice(startLineIndex, endLineContentEnd).split("\n");
-
-        let newSelectionStart = selectionStart;
-        let newSelectionEnd = selectionEnd;
-        let currentLineOriginalStart = startLineIndex;
-
-        const newLines = lines.map((line, index) => {
-          const isFirstLine = index === 0;
-          const isLastLine = index === lines.length - 1;
-
-          if (event.shiftKey) {
-            const leadingSpaces = line.match(/^ */)[0];
-            const removeCount = Math.min(leadingSpaces.length, indentStr.length);
-
-            if (isFirstLine) {
-              const spacesBeforeStart = Math.min(removeCount, Math.max(0, selectionStart - currentLineOriginalStart));
-              newSelectionStart -= spacesBeforeStart;
-            }
-            if (isLastLine) {
-              const spacesBeforeEnd = Math.min(removeCount, Math.max(0, selectionEnd - currentLineOriginalStart));
-              newSelectionEnd -= spacesBeforeEnd;
-            } else {
-              newSelectionEnd -= removeCount;
-            }
-            currentLineOriginalStart += line.length + 1;
-            return line.slice(removeCount);
-          } else {
-            if (isFirstLine) newSelectionStart += indentStr.length;
-            newSelectionEnd += indentStr.length;
-
-            currentLineOriginalStart += line.length + 1;
-            return indentStr + line;
-          }
-        });
-
-        const nextSourceCode = value.slice(0, startLineIndex) + newLines.join("\n") + value.slice(endLineContentEnd);
-        setWorkspace((current) => ({ ...current, sourceCode: nextSourceCode }));
-        requestAnimationFrame(() => {
-          textarea.selectionStart = Math.max(0, newSelectionStart);
-          textarea.selectionEnd = Math.max(0, newSelectionEnd);
-        });
-      } else {
-        const nextSourceCode = `${value.slice(0, selectionStart)}${indentStr}${value.slice(selectionEnd)}`;
-        setWorkspace((current) => ({ ...current, sourceCode: nextSourceCode }));
-        requestAnimationFrame(() => {
-          textarea.selectionStart = selectionStart + indentStr.length;
-          textarea.selectionEnd = selectionStart + indentStr.length;
-        });
-      }
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
-      const currentLine = value.slice(lineStart, selectionStart);
-      const leadingWhitespace = currentLine.match(/^(\s*)/)[1];
-      const prevChar = value[selectionStart - 1];
-
-      let inserted;
-      let cursorOffset;
-
-      if (prevChar === "{" && nextCharacter === "}") {
-        inserted = `\n${leadingWhitespace}${indentStr}\n${leadingWhitespace}`;
-        cursorOffset = 1 + leadingWhitespace.length + indentStr.length;
-      } else if (prevChar === "{" || prevChar === ":" || prevChar === "(") {
-        inserted = `\n${leadingWhitespace}${indentStr}`;
-        cursorOffset = inserted.length;
-      } else {
-        inserted = `\n${leadingWhitespace}`;
-        cursorOffset = inserted.length;
-      }
-
-      const next = `${value.slice(0, selectionStart)}${inserted}${value.slice(selectionEnd)}`;
-      setWorkspace((current) => ({ ...current, sourceCode: next }));
-      requestAnimationFrame(() => {
-        textarea.selectionStart = selectionStart + cursorOffset;
-        textarea.selectionEnd = selectionStart + cursorOffset;
-      });
-    }
-  }
-
   return (
     <PlatformLayout
       role={accentRole}
@@ -351,8 +252,6 @@ export default function CourseProblemWorkspace({ role, session }) {
                     sourceCode: event.target.value
                   }))
                 }
-                onKeyDown={handleCodeKeyDown}
-                style={{ fontFamily: "monospace", tabSize: 2 }}
               />
               <div className="platform-section-actions">
                 <button className={`auth-button ${accentButtonClass} detail-link`} type="button" onClick={handleRun}>

@@ -521,7 +521,6 @@ export default function StudentProblemDetails() {
   const [leftActiveTab, setLeftActiveTab] = useState("description");
   const [activeTestCaseIndex, setActiveTestCaseIndex] = useState(0);
   const [cursorPos, setCursorPos] = useState({ line: 1, column: 1 });
-  const [workspaceTab, setWorkspaceTab] = useState("description"); // "description" or "code"
 
   function updateCursorPos(textarea) {
     if (!textarea) return;
@@ -999,85 +998,16 @@ export default function StudentProblemDetails() {
 
     if (event.key === "Tab") {
       event.preventDefault();
-      const indentStr = editor.language === "python" ? "    " : "  ";
-
-      const actualSelectionEnd = selectionEnd > selectionStart && value[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd;
-      const startLineIndex = value.lastIndexOf("\n", selectionStart - 1) + 1;
-      const endLineIndex = value.indexOf("\n", actualSelectionEnd);
-      const endLineContentEnd = endLineIndex === -1 ? value.length : endLineIndex;
-
-      const hasNewlineInSelection = selectionStart !== selectionEnd && value.slice(selectionStart, actualSelectionEnd).includes("\n");
-
-      if (hasNewlineInSelection || event.shiftKey) {
-        const lines = value.slice(startLineIndex, endLineContentEnd).split("\n");
-
-        let newSelectionStart = selectionStart;
-        let newSelectionEnd = selectionEnd;
-        let currentLineOriginalStart = startLineIndex;
-
-        const newLines = lines.map((line, index) => {
-          const isFirstLine = index === 0;
-          const isLastLine = index === lines.length - 1;
-
-          if (event.shiftKey) {
-            const leadingSpaces = line.match(/^ */)[0];
-            const removeCount = Math.min(leadingSpaces.length, indentStr.length);
-
-            if (isFirstLine) {
-              const spacesBeforeStart = Math.min(removeCount, Math.max(0, selectionStart - currentLineOriginalStart));
-              newSelectionStart -= spacesBeforeStart;
-            }
-            if (isLastLine) {
-              const spacesBeforeEnd = Math.min(removeCount, Math.max(0, selectionEnd - currentLineOriginalStart));
-              newSelectionEnd -= spacesBeforeEnd;
-            } else {
-              newSelectionEnd -= removeCount;
-            }
-            currentLineOriginalStart += line.length + 1;
-            return line.slice(removeCount);
-          } else {
-            if (isFirstLine) newSelectionStart += indentStr.length;
-            newSelectionEnd += indentStr.length;
-
-            currentLineOriginalStart += line.length + 1;
-            return indentStr + line;
-          }
-        });
-
-        const nextSourceCode = value.slice(0, startLineIndex) + newLines.join("\n") + value.slice(endLineContentEnd);
-        applyEditorValue(nextSourceCode, Math.max(0, newSelectionStart), Math.max(0, newSelectionEnd));
-      } else {
-        const nextSourceCode = `${value.slice(0, selectionStart)}${indentStr}${value.slice(selectionEnd)}`;
-        applyEditorValue(nextSourceCode, selectionStart + indentStr.length);
-      }
+      const nextSourceCode = `${value.slice(0, selectionStart)}  ${value.slice(selectionEnd)}`;
+      applyEditorValue(nextSourceCode, selectionStart + 2);
       return;
     }
 
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && value[selectionStart - 1] === "{" && nextCharacter === "}") {
       event.preventDefault();
-      // Find the start of the current line to detect its indentation
-      const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
-      const currentLine = value.slice(lineStart, selectionStart);
-      const leadingWhitespace = currentLine.match(/^(\s*)/)[1];
-      const indentUnit = editor.language === "python" ? "    " : "  ";
-
-      if (value[selectionStart - 1] === "{" && nextCharacter === "}") {
-        // Special case: cursor inside { } — add extra indent level and place closing brace below
-        const nextSourceCode = `${value.slice(0, selectionStart)}\n${leadingWhitespace}${indentUnit}\n${leadingWhitespace}${value.slice(selectionEnd)}`;
-        applyEditorValue(nextSourceCode, selectionStart + leadingWhitespace.length + indentUnit.length + 1);
-      } else if (
-        value[selectionStart - 1] === "{" ||
-        value[selectionStart - 1] === ":" ||
-        value[selectionStart - 1] === "("
-      ) {
-        // Opening brace/colon (Python) — indent one level deeper
-        const nextSourceCode = `${value.slice(0, selectionStart)}\n${leadingWhitespace}${indentUnit}${value.slice(selectionEnd)}`;
-        applyEditorValue(nextSourceCode, selectionStart + leadingWhitespace.length + indentUnit.length + 1);
-      } else {
-        // Normal Enter — carry current line's indentation
-        const nextSourceCode = `${value.slice(0, selectionStart)}\n${leadingWhitespace}${value.slice(selectionEnd)}`;
-        applyEditorValue(nextSourceCode, selectionStart + leadingWhitespace.length + 1);
-      }
+      const indent = editor.language === "python" ? "    " : "  ";
+      const nextSourceCode = `${value.slice(0, selectionStart)}\n${indent}\n${value.slice(selectionEnd)}`;
+      applyEditorValue(nextSourceCode, selectionStart + indent.length + 1);
       return;
     }
 
@@ -1136,7 +1066,6 @@ export default function StudentProblemDetails() {
     setRunMessage("");
     setConsoleTab("results");
     setLeftActiveTab("testResult");
-    setWorkspaceTab("description");
 
     try {
       const response = await fetch(`${apiBaseUrl}/submissions`, {
@@ -1205,7 +1134,6 @@ export default function StudentProblemDetails() {
     setLatestSubmitExecution(null);
     setConsoleTab("results");
     setLeftActiveTab("testResult");
-    setWorkspaceTab("description");
 
     try {
       const response = await fetch(`${apiBaseUrl}/submissions/run`, {
@@ -1365,7 +1293,7 @@ export default function StudentProblemDetails() {
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="brand-text-desktop">codexa</span>
+              codexa
             </span>
             <span style={{ color: "#2d2d2d", margin: "0 0.5rem" }}>|</span>
             <span style={{ fontSize: "0.85rem", fontWeight: "500" }}>
@@ -1496,29 +1424,8 @@ export default function StudentProblemDetails() {
         {status.error ? <p className="form-status error">{status.error}</p> : null}
 
         {problem ? (
-          <>
-            {/* Mobile Workspace Toggle Tabs */}
-            <div className="mobile-workspace-tabs">
-              <button 
-                type="button" 
-                className={`mobile-workspace-tab ${workspaceTab === "description" ? "active" : ""}`}
-                onClick={() => setWorkspaceTab("description")}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style={{ marginRight: "4px", verticalAlign: "middle" }}><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-                Description
-              </button>
-              <button 
-                type="button" 
-                className={`mobile-workspace-tab ${workspaceTab === "code" ? "active" : ""}`}
-                onClick={() => setWorkspaceTab("code")}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "4px", verticalAlign: "middle" }}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                Code
-              </button>
-            </div>
-
-            <section className="workspace-shell" style={{ padding: "0.5rem" }}>
-              <article className={`detail-block workspace-column workspace-problem-panel ${workspaceTab !== "description" ? "mobile-hidden" : ""}`}>
+          <section className="workspace-shell" style={{ gridTemplateColumns: "1fr 1.15fr", padding: "0.5rem" }}>
+            <article className="detail-block workspace-column workspace-problem-panel">
               <div className="leetcode-tab-container">
                 <button
                   type="button"
@@ -1871,7 +1778,7 @@ export default function StudentProblemDetails() {
 
             </article>
 
-            <article className={`detail-block workspace-column editor-column ${workspaceTab !== "code" ? "mobile-hidden" : ""}`}>
+            <article className="detail-block workspace-column editor-column">
               <div className="leetcode-tab-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingRight: "0.5rem", height: "38px" }}>
                 <span className="leetcode-tab active" style={{ cursor: "default", display: "flex", alignItems: "center", gap: "0.4rem", padding: "0 0.8rem", height: "100%", borderBottom: "2px solid #10b981" }}>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
@@ -2027,7 +1934,6 @@ export default function StudentProblemDetails() {
 
             </article>
           </section>
-          </>
         ) : null}
       </section>
     </main>

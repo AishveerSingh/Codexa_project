@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
 import mainRouter from "./routes/mainroutes.js";
 
@@ -18,12 +19,8 @@ app.use(
         return;
       }
 
-      // Allow if wildcard * is set, origin is explicitly allowed, or if it is a Vercel deployment URL
-      if (
-        allowedOrigins.has("*") ||
-        allowedOrigins.has(origin) ||
-        origin.endsWith(".vercel.app")
-      ) {
+      // Allow if wildcard * is set or origin is explicitly allowed in CLIENT_URL
+      if (allowedOrigins.has("*") || allowedOrigins.has(origin)) {
         callback(null, true);
         return;
       }
@@ -41,6 +38,26 @@ app.get("/", (_req, res) => {
     message: "Coding platform backend is running."
   });
 });
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // Limit each IP to 300 requests per windowMs
+  message: { message: "Too many requests from this IP, please try again after 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 auth requests per windowMs
+  message: { message: "Too many authentication attempts from this IP, please try again after 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use("/api/auth", authLimiter);
+app.use("/api", apiLimiter);
+app.use("/", apiLimiter);
 
 app.use("/api", mainRouter);
 app.use("/", mainRouter);

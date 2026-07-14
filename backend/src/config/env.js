@@ -10,10 +10,20 @@ dotenv.config({
 });
 
 function parseClientUrls(value) {
-  return (value || "http://localhost:5173")
+  const urls = (value || "http://localhost:5173")
     .split(",")
     .map((entry) => entry.trim().replace(/\/$/, ""))
     .filter(Boolean);
+
+  const extraUrls = [];
+  for (const url of urls) {
+    if (url.includes("://localhost:")) {
+      extraUrls.push(url.replace("://localhost:", "://127.0.0.1:"));
+    } else if (url.includes("://127.0.0.1:")) {
+      extraUrls.push(url.replace("://127.0.0.1:", "://localhost:"));
+    }
+  }
+  return [...new Set([...urls, ...extraUrls])];
 }
 
 export const env = {
@@ -26,7 +36,13 @@ export const env = {
   pgSsl:
     process.env.PGSSL === "true" ||
     String(process.env.DATABASE_URL || "").includes("neon.tech"),
-  jwtSecret: process.env.JWT_SECRET || "development-jwt-secret-change-me",
+  jwtSecret: (() => {
+    if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: JWT_SECRET environment variable is missing in production. Refusing to start with weak fallback.");
+    }
+    return "development-jwt-secret-change-me";
+  })(),
   judge0BaseUrl: (process.env.JUDGE0_BASE_URL || "https://ce.judge0.com").trim(),
   judge0ApiKey: (process.env.JUDGE0_API_KEY || "").trim(),
   judge0ApiHost: (process.env.JUDGE0_API_HOST || "").trim(),

@@ -14,8 +14,8 @@ const pool = new pg.Pool({
 
 async function main() {
   try {
-    const res = await pool.query("SELECT email, role, full_name FROM users WHERE role = 'admin'");
-    console.log("Admin Users:");
+    const res = await pool.query("SELECT email, role, full_name FROM users");
+    console.log("All Users:");
     console.log(res.rows);
   } catch (err) {
     console.error(err);

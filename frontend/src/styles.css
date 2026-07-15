@@ -476,7 +476,8 @@ a {
 .platform-sidebar {
   position: sticky;
   top: 0;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   padding: 1.5rem 1rem;
   border-right: 1px solid var(--lc-border);
   background: var(--lc-bg-card);
@@ -3787,7 +3788,8 @@ body,
     width: 280px;
     max-width: 85%;
     z-index: 1001;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     border-right: 1px solid var(--lc-border);
     border-bottom: 0;
     background: var(--lc-bg-card);
@@ -5110,7 +5112,8 @@ body:has(.student-detail-page) {
     width: 280px;
     max-width: 88vw;
     z-index: 1001;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     border-right: 1px solid var(--lc-border);
     border-bottom: 0;
     background: var(--lc-bg-card);

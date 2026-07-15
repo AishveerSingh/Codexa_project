@@ -147,31 +147,58 @@ export default function Login() {
           transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* Light Theme overrides - outer remains black, inner transitions to soft slate dim theme */
+        /* Light Theme overrides - styled like LeetCode light mode with dark glass workspace background */
         [data-theme="light"] .lc-login-container {
-          --lc-card-bg: rgba(203, 213, 225, 0.3);
-          --lc-left-bg: rgba(226, 232, 240, 0.3);
-          --lc-right-bg: rgba(203, 213, 225, 0.4);
-          --lc-border: rgba(15, 23, 42, 0.15);
-          --lc-text-primary: #0F172A;
-          --lc-text-secondary: #334155;
-          --lc-text-muted: #475569;
+          background-color: #0A0D14;
+          color: #1A202C;
+
+          --lc-card-bg: rgba(255, 255, 255, 0.25);
+          --lc-left-bg: rgba(255, 255, 255, 0.15);
+          --lc-right-bg: rgba(255, 255, 255, 0.25);
+          --lc-border: rgba(255, 255, 255, 0.4);
+          --lc-text-primary: #1A202C;
+          --lc-text-secondary: #4A5568;
+          --lc-text-muted: #718096;
           
-          --lc-input-bg: #F1F5F9;
-          --lc-input-border: rgba(15, 23, 42, 0.15);
-          --lc-input-focus-bg: #FFFFFF;
+          --lc-input-bg: rgba(255, 255, 255, 0.6);
+          --lc-input-border: rgba(0, 0, 0, 0.12);
+          --lc-input-focus-bg: #ffffff;
           
-          --lc-code-bg: #0F172A;
-          --lc-code-border: rgba(255, 255, 255, 0.05);
-          --lc-code-text: #E2E8F0;
-          --lc-code-keyword: #F59E0B;
-          --lc-code-string: #10B981;
-          --lc-code-comment: #64748B;
-          --lc-code-function: #38BDF8;
+          --lc-code-bg: rgba(255, 255, 255, 0.3);
+          --lc-code-border: rgba(255, 255, 255, 0.2);
+          --lc-code-text: #1A202C;
+          --lc-code-keyword: #005cc5;
+          --lc-code-string: #032f62;
+          --lc-code-comment: #6a737d;
+          --lc-code-function: #6f42c1;
           
-          --lc-verdict-bg: rgba(15, 23, 42, 0.85);
-          --lc-verdict-border: rgba(15, 23, 42, 0.08);
-          --lc-brand-text: linear-gradient(to right, #0F172A, #334155);
+          --lc-verdict-bg: rgba(255, 255, 255, 0.85);
+          --lc-verdict-border: rgba(0, 0, 0, 0.08);
+          --lc-dot-grid: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+          --lc-brand-text: linear-gradient(to right, #1A202C, #4A5568);
+        }
+
+        [data-theme="light"] .lc-login-bg-overlay {
+          background-color: rgba(255, 255, 255, 0.45) !important;
+          backdrop-filter: blur(25px) !important;
+          display: block !important;
+        }
+
+        [data-theme="light"] .lc-glow-orange {
+          background: radial-gradient(circle, rgba(250, 161, 22, 0.1) 0%, rgba(255, 255, 255, 0) 70%) !important;
+          display: block !important;
+        }
+
+        [data-theme="light"] .lc-glow-purple {
+          background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, rgba(255, 255, 255, 0) 70%) !important;
+          display: block !important;
+        }
+
+        [data-theme="light"] .lc-split-layout {
+          background: rgba(255, 255, 255, 0.25) !important;
+          border-color: rgba(255, 255, 255, 0.4) !important;
+          backdrop-filter: blur(20px) !important;
+          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.05) !important;
         }
 
         /* Subtle dot grid pattern */

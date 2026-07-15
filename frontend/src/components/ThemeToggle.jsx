@@ -36,7 +36,8 @@ export default function ThemeToggle() {
 
         /* Light theme overrides for toggle button */
         body:not(.dark-theme) .lc-theme-toggle,
-        body[class*="light"] .lc-theme-toggle {
+        body[class*="light"] .lc-theme-toggle,
+        html[data-theme="light"] .lc-theme-toggle {
           background: rgba(255, 255, 255, 0.85);
           border: 1px solid rgba(0, 0, 0, 0.06);
           color: #FF8F00;
@@ -51,7 +52,8 @@ export default function ThemeToggle() {
         }
 
         body:not(.dark-theme) .lc-theme-toggle:hover,
-        body[class*="light"] .lc-theme-toggle:hover {
+        body[class*="light"] .lc-theme-toggle:hover,
+        html[data-theme="light"] .lc-theme-toggle:hover {
           background: rgba(255, 255, 255, 1);
           border-color: #FF8F00;
           box-shadow: 0 0 16px rgba(255, 143, 0, 0.25);

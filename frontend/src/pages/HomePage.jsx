@@ -336,11 +336,24 @@ export default function HomePage() {
 
         /* Light Theme Overrides */
         [data-theme="light"] .hp-container {
-          background-color: #F4F6F9;
+          background-color: #0A0D14;
           color: #1A202C;
         }
+        [data-theme="light"] .hp-bg-overlay {
+          background-color: rgba(255, 255, 255, 0.45) !important;
+          backdrop-filter: blur(25px) !important;
+          display: block !important;
+        }
+        [data-theme="light"] .hp-glow-1 {
+          background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, rgba(255, 255, 255, 0) 70%) !important;
+          display: block !important;
+        }
+        [data-theme="light"] .hp-glow-2 {
+          background: radial-gradient(circle, rgba(250, 161, 22, 0.08) 0%, rgba(255, 255, 255, 0) 70%) !important;
+          display: block !important;
+        }
         [data-theme="light"] .hp-container::before {
-          background-image: radial-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+          background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
         }
         [data-theme="light"] .hp-header {
           border-bottom-color: rgba(0, 0, 0, 0.06);
@@ -354,14 +367,16 @@ export default function HomePage() {
           color: #1A202C;
         }
         [data-theme="light"] .hp-login-btn {
-          background: rgba(0, 0, 0, 0.02);
-          border: 1px solid rgba(0, 0, 0, 0.06);
+          background: rgba(255, 255, 255, 0.7);
+          border: 1px solid rgba(0, 0, 0, 0.12);
           color: #1A202C;
+          backdrop-filter: blur(4px);
         }
         [data-theme="light"] .hp-login-btn:hover {
-          background: linear-gradient(135deg, #FFA116 0%, #FF6B00 100%);
-          color: #ffffff;
-          border-color: transparent;
+          background: #ffffff;
+          border-color: #ffa116;
+          color: #ffa116;
+          box-shadow: 0 4px 12px rgba(250, 161, 22, 0.15);
         }
         [data-theme="light"] .hp-title {
           background: linear-gradient(to right, #1A202C, #4A5568);
@@ -372,14 +387,15 @@ export default function HomePage() {
           color: #4A5568;
         }
         [data-theme="light"] .hp-card {
-          background: rgba(255, 255, 255, 0.85);
-          border: 1px solid rgba(0, 0, 0, 0.06);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+          background: rgba(255, 255, 255, 0.25) !important;
+          border: 1px solid rgba(255, 255, 255, 0.4) !important;
+          backdrop-filter: blur(20px) !important;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
         }
         [data-theme="light"] .hp-card:hover {
-          background: rgba(255, 255, 255, 1);
-          border-color: rgba(250, 161, 22, 0.3);
-          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
+          background: rgba(255, 255, 255, 0.35) !important;
+          border-color: #ffa116 !important;
+          box-shadow: 0 12px 28px rgba(250, 161, 22, 0.08) !important;
         }
         [data-theme="light"] .hp-card h3 {
           color: #1A202C;
@@ -388,13 +404,15 @@ export default function HomePage() {
           color: #4A5568;
         }
         [data-theme="light"] .hp-lang-badge {
-          background: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(0, 0, 0, 0.05);
+          background: rgba(255, 255, 255, 0.25) !important;
+          border: 1px solid rgba(255, 255, 255, 0.4) !important;
+          backdrop-filter: blur(8px) !important;
           color: #1A202C;
         }
         [data-theme="light"] .hp-lang-badge:hover {
-          background: rgba(255, 255, 255, 0.9);
-          border-color: rgba(250, 161, 22, 0.3);
+          background: rgba(255, 255, 255, 0.35) !important;
+          border-color: #ffa116 !important;
+          color: #ffa116;
         }
         [data-theme="light"] .hp-footer {
           border-top-color: rgba(0, 0, 0, 0.06);

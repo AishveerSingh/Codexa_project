@@ -1408,7 +1408,7 @@ a {
 }
 
 .form-status.error {
-  color: #fda4af;
+  color: #5ed562;
 }
 
 .auth-form-footer-note {
@@ -1955,6 +1955,8 @@ a {
 }
 
 .workspace-column {
+  min-width: 0;
+  max-width: 100%;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -2053,6 +2055,8 @@ a {
   color: #e2e8f0;
   font-size: 1rem;
   line-height: 1.75;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .workspace-brief-strip {
@@ -2090,6 +2094,8 @@ a {
 .workspace-note-card p {
   margin-top: 0.55rem;
   color: #cbd5e1;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .workspace-section-heading {
@@ -2635,6 +2641,8 @@ a {
 }
 
 .detail-block {
+  min-width: 0;
+  max-width: 100%;
   padding: 1.25rem;
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(30, 30, 30, 0.98), rgba(37, 37, 38, 0.96));
@@ -2687,6 +2695,7 @@ a {
 }
 
 .sample-case-card {
+  min-width: 0;
   padding: 1.1rem;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(33, 33, 36, 0.98), rgba(25, 25, 28, 0.96));
@@ -3272,7 +3281,7 @@ body,
 .form-status.error,
 .status-pill.wrong_answer,
 .difficulty-pill.hard {
-  color: var(--vscode-error);
+  color: rgb(43, 195, 43);
 }
 
 .status-pill.time_limit,
@@ -3357,14 +3366,40 @@ body,
 
 [data-theme="light"] {
   color-scheme: light;
-  color: #0f172a;
-  background: #f1f5f9;
+  color: #262626;
+  background: #fafafa;
+
+  /* LeetCode Light Theme Color Variables */
+  --lc-bg-main: #fafafa;
+  --lc-bg-card: #ffffff;
+  --lc-border: #eeeeee;
+  --lc-accent: #ffa116;
+  --lc-accent-hover: #ffb84d;
+  --lc-text-primary: #262626;
+  --lc-text-secondary: #595959;
+  --lc-success: #2cbb5d;
+  --lc-warning: #ffa116;
+  --lc-danger: #ef4743;
+
+  /* VSCode variables for light mode */
+  --vscode-bg: #ffffff;
+  --vscode-sidebar: #f5f5f5;
+  --vscode-panel: #ffffff;
+  --vscode-card: #ffffff;
+  --vscode-card-soft: #fbfbfb;
+  --vscode-border: #e8e8e8;
+  --vscode-border-strong: #d9d9d9;
+  --vscode-text: #262626;
+  --vscode-text-muted: #595959;
+  --vscode-text-soft: #8c8c8c;
+  --vscode-accent: #0284c7;
+  --vscode-accent-hover: #0369a1;
 }
 
 [data-theme="light"] body,
 [data-theme="light"] #root {
-  color: #0f172a;
-  background: #f1f5f9;
+  color: #262626;
+  background: #fafafa;
 }
 
 [data-theme="light"] .theme-toggle-button {
@@ -3391,7 +3426,7 @@ body,
 [data-theme="light"] .detail-page,
 [data-theme="light"] .student-detail-page,
 [data-theme="light"] .admin-detail-page {
-  background: #f1f5f9 !important;
+  background: #fafafa !important;
 }
 
 [data-theme="light"] .platform-brand {
@@ -3877,9 +3912,81 @@ body,
     display: none;
   }
 
+  .leetcode-logo,
+  .leetcode-logo-separator,
+  .leetcode-topbar-center,
+  .leetcode-topbar-right {
+    display: none !important;
+  }
+
   .leetcode-topbar {
     padding: 0.5rem 0.5rem !important;
     gap: 4px !important;
+  }
+
+  .mobile-editor-footer {
+    display: none;
+  }
+
+  .mobile-editor-footer.show {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: #1a1a1a;
+    border-top: 1px solid #2d2d2d;
+    padding: 0 1rem;
+    z-index: 1000;
+    box-sizing: border-box;
+  }
+
+  [data-theme="light"] .mobile-editor-footer.show {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .mobile-console-btn,
+  .mobile-run-btn {
+    background: #262626 !important;
+    border: 1px solid #3d3d3d !important;
+    color: #eff1f5 !important;
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 6px !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  [data-theme="light"] .mobile-console-btn,
+  [data-theme="light"] .mobile-run-btn {
+    background: #f3f4f6 !important;
+    border-color: #e5e7eb !important;
+    color: #374151 !important;
+  }
+
+  .mobile-submit-btn {
+    background: #2cbb5d !important;
+    border: none !important;
+    color: #ffffff !important;
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 6px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .editor-form {
+    padding-bottom: 60px !important;
   }
 
   .leetcode-topbar-left,
@@ -4218,6 +4325,10 @@ body,
 
 .leetcode-tab-container {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   background: #1a1a1a;
   border-bottom: 1px solid #2d2d2d;
   padding: 0 0.5rem;
@@ -4413,6 +4524,10 @@ body,
 
 .leetcode-tab-container {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   background: #1a1a1a;
   border-bottom: 1px solid #2d2d2d;
   padding: 0 0.5rem;
@@ -4629,6 +4744,8 @@ body:has(.student-detail-page) {
   grid-row: 1 / span 2 !important;
   display: flex !important;
   flex-direction: column !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
   height: 100% !important;
   max-height: 100% !important;
   min-height: 0 !important;
@@ -4647,6 +4764,10 @@ body:has(.student-detail-page) {
 
 .workspace-problem-content-scroll {
   padding: 1.25rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
   flex: 1;
 }
@@ -4865,7 +4986,8 @@ body:has(.student-detail-page) {
     height: auto !important;
     max-height: none !important;
     min-height: auto !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
   }
 
   .workspace-problem-panel.mobile-hidden,
@@ -4887,5 +5009,321 @@ body:has(.student-detail-page) {
   .code-editor-shell {
     height: 100% !important;
     min-height: 420px !important;
+  }
+}
+
+@supports (height: 100dvh) {
+  .student-detail-page {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+
+  .student-workspace-card {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+
+  .workspace-shell {
+    height: calc(100dvh - 52px) !important;
+    max-height: calc(100dvh - 52px) !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .platform-main {
+    padding: 1.25rem;
+  }
+
+  .platform-hero {
+    padding: 1.2rem;
+  }
+
+  .platform-hero,
+  .platform-hero-side,
+  .platform-section-head,
+  .workspace-topbar,
+  .workspace-page-header {
+    flex-wrap: wrap;
+  }
+
+  .platform-hero-side {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .platform-tab-bar {
+    flex-wrap: wrap;
+  }
+
+  .platform-stats-grid,
+  .quick-actions-row,
+  .course-grid,
+  .faculty-feature-grid,
+  .faculty-summary-band,
+  .dashboard-stats,
+  .auth-side-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .faculty-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-action-info p {
+    white-space: normal;
+  }
+
+  .workspace-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .theme-toggle-button {
+    right: 1rem;
+    bottom: 1rem;
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  .auth-page {
+    grid-template-columns: 1fr;
+    padding: 1.5rem 1rem;
+  }
+
+  .auth-panel,
+  .dashboard-card,
+  .auth-side {
+    padding: 1.5rem;
+  }
+
+  .platform-page {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 88vw;
+    z-index: 1001;
+    min-height: 100vh;
+    border-right: 1px solid var(--lc-border);
+    border-bottom: 0;
+    background: var(--lc-bg-card);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 20px 0 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .platform-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .platform-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    background: var(--lc-bg-card);
+    border-bottom: 1px solid var(--lc-border);
+    padding: 0 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+  }
+
+  [data-theme="light"] .platform-mobile-header {
+    background: #ffffff;
+  }
+
+  .platform-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    animation: fadeIn 0.25s ease-out;
+  }
+
+  .platform-main {
+    min-height: calc(100vh - 56px);
+    padding: 1rem;
+  }
+
+  .platform-stats-grid,
+  .quick-actions-row,
+  .course-grid,
+  .faculty-feature-grid,
+  .faculty-summary-band,
+  .faculty-builder-grid,
+  .faculty-workbench,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .leetcode-topbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.75rem;
+    height: auto;
+    padding: 0.75rem 1rem;
+  }
+
+  .leetcode-topbar-left,
+  .leetcode-topbar-center,
+  .leetcode-topbar-right {
+    flex-wrap: wrap;
+  }
+
+  .leetcode-topbar-right {
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  html:has(.student-detail-page),
+  body:has(.student-detail-page) {
+    overflow: auto !important;
+    height: auto !important;
+  }
+
+  .student-detail-page {
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow: auto !important;
+  }
+
+  .student-workspace-card {
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .workspace-shell {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0.75rem !important;
+  }
+
+  .workspace-problem-panel,
+  .editor-column {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
+  .workspace-problem-content-scroll {
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .editor-form {
+    height: 30rem !important;
+    min-height: 30rem !important;
+  }
+
+  .code-editor-shell {
+    height: 100% !important;
+    min-height: 24rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .theme-toggle-button {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    min-width: 0;
+    width: auto;
+  }
+
+  .auth-page {
+    padding: 1rem 0.75rem;
+    gap: 1rem;
+  }
+
+  .auth-panel,
+  .dashboard-card,
+  .auth-side,
+  .auth-form-card,
+  .platform-hero,
+  .recent-activity-section,
+  .custom-modal {
+    padding: 1.15rem;
+    border-radius: 22px;
+  }
+
+  .platform-main {
+    padding: 0.85rem;
+  }
+
+  .platform-tab-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .platform-tab {
+    white-space: nowrap;
+  }
+
+  .platform-stats-grid,
+  .dashboard-stats,
+  .auth-side-metrics,
+  .quick-actions-row {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-toast {
+    top: auto;
+    right: 0.75rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    left: 0.75rem;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .mobile-editor-footer.show {
+    height: auto;
+    min-height: 56px;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .mobile-editor-footer .mobile-footer-actions-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .mobile-console-btn,
+  .mobile-run-btn,
+  .mobile-submit-btn {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .leetcode-topbar-left {
+    width: 100%;
+  }
+
+  .editor-form {
+    height: 26rem !important;
+    min-height: 26rem !important;
   }
 }

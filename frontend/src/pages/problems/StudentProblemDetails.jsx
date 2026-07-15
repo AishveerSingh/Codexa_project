@@ -986,7 +986,7 @@ export default function StudentProblemDetails() {
         ...current,
         visible: false
       }));
-      return;
+      // Do not return early; let it fall through to run our custom Enter indentation logic
     }
 
     if (event.key === "Escape") {
@@ -999,7 +999,7 @@ export default function StudentProblemDetails() {
 
     if (event.key === "Tab") {
       event.preventDefault();
-      const indentStr = editor.language === "python" ? "    " : "  ";
+      const indentStr = "    "; // 4 spaces universally
 
       const actualSelectionEnd = selectionEnd > selectionStart && value[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd;
       const startLineIndex = value.lastIndexOf("\n", selectionStart - 1) + 1;
@@ -1020,7 +1020,7 @@ export default function StudentProblemDetails() {
           const isLastLine = index === lines.length - 1;
 
           if (event.shiftKey) {
-            const leadingSpaces = line.match(/^ */)[0];
+            const leadingSpaces = line.match(/^\s*/)[0];
             const removeCount = Math.min(leadingSpaces.length, indentStr.length);
 
             if (isFirstLine) {
@@ -1059,7 +1059,7 @@ export default function StudentProblemDetails() {
       const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
       const currentLine = value.slice(lineStart, selectionStart);
       const leadingWhitespace = currentLine.match(/^(\s*)/)[1];
-      const indentUnit = editor.language === "python" ? "    " : "  ";
+      const indentUnit = "    "; // 4 spaces universally
 
       if (value[selectionStart - 1] === "{" && nextCharacter === "}") {
         // Special case: cursor inside { } — add extra indent level and place closing brace below
@@ -1067,10 +1067,11 @@ export default function StudentProblemDetails() {
         applyEditorValue(nextSourceCode, selectionStart + leadingWhitespace.length + indentUnit.length + 1);
       } else if (
         value[selectionStart - 1] === "{" ||
-        value[selectionStart - 1] === ":" ||
-        value[selectionStart - 1] === "("
+        value[selectionStart - 1] === "[" ||
+        value[selectionStart - 1] === "(" ||
+        value[selectionStart - 1] === ":"
       ) {
-        // Opening brace/colon (Python) — indent one level deeper
+        // Opening brace/bracket/parenthesis/colon — indent one level deeper
         const nextSourceCode = `${value.slice(0, selectionStart)}\n${leadingWhitespace}${indentUnit}${value.slice(selectionEnd)}`;
         applyEditorValue(nextSourceCode, selectionStart + leadingWhitespace.length + indentUnit.length + 1);
       } else {
@@ -1079,6 +1080,31 @@ export default function StudentProblemDetails() {
         applyEditorValue(nextSourceCode, selectionStart + leadingWhitespace.length + 1);
       }
       return;
+    }
+
+    if (event.key === "}" && selectionStart === selectionEnd) {
+      const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+      const textBeforeCursorOnLine = value.slice(lineStart, selectionStart);
+      if (/^\s+$/.test(textBeforeCursorOnLine)) {
+        // Line has only whitespace up to the cursor. Let's unindent it by up to 4 spaces or 1 tab.
+        let removeCount = 0;
+        if (textBeforeCursorOnLine.endsWith("\t")) {
+          removeCount = 1;
+        } else if (textBeforeCursorOnLine.endsWith("    ")) {
+          removeCount = 4;
+        } else {
+          const spaceMatch = textBeforeCursorOnLine.match(/ *$/);
+          if (spaceMatch) {
+            removeCount = spaceMatch[0].length % 4 || spaceMatch[0].length;
+          }
+        }
+        if (removeCount > 0) {
+          event.preventDefault();
+          const nextSourceCode = `${value.slice(0, selectionStart - removeCount)}}${value.slice(selectionEnd)}`;
+          applyEditorValue(nextSourceCode, selectionStart - removeCount + 1);
+          return;
+        }
+      }
     }
 
     if (pairedCharacters[event.key]) {
@@ -1367,7 +1393,7 @@ export default function StudentProblemDetails() {
               </svg>
               <span className="brand-text-desktop">codexa</span>
             </span>
-            <span style={{ color: "#2d2d2d", margin: "0 0.5rem" }}>|</span>
+            <span className="leetcode-logo-separator" style={{ color: "#2d2d2d", margin: "0 0.5rem" }}>|</span>
             <span style={{ fontSize: "0.85rem", fontWeight: "500" }}>
               {currentProblemIndex >= 0 ? `Problem ${currentProblemIndex + 1}` : "Problem"}
             </span>
@@ -2030,6 +2056,40 @@ export default function StudentProblemDetails() {
           </>
         ) : null}
       </section>
+
+      {/* Mobile Footer Action Bar */}
+      <footer className={`mobile-editor-footer ${workspaceTab === "code" ? "show" : ""}`}>
+        <button
+          className="leetcode-action-btn mobile-console-btn"
+          type="button"
+          onClick={() => {
+            setLeftActiveTab("testResult");
+            setWorkspaceTab("description");
+          }}
+        >
+          Console
+        </button>
+        <div className="mobile-footer-actions-right" style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            className="leetcode-action-btn mobile-run-btn"
+            type="button"
+            onClick={handleRunCode}
+            disabled={isRunning || isSubmitting}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Run
+          </button>
+          <button
+            className="leetcode-action-btn leetcode-submit-btn mobile-submit-btn"
+            type="submit"
+            form="problem-editor-form"
+            disabled={isSubmitting || isRunning}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Submit
+          </button>
+        </div>
+      </footer>
     </main>
   );
 }

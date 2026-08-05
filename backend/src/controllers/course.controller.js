@@ -523,9 +523,30 @@ export const getCourseById = asyncHandler(async (req, res) => {
     if (req.currentUser.role === "faculty" || req.currentUser.role === "admin") {
       const studentResult = await client.query(
         `
-          SELECT u.id, u.full_name, u.email
+          SELECT
+            u.id,
+            u.full_name,
+            u.email,
+            sp.roll_number,
+            sp.branch,
+            sp.semester,
+            sp.section,
+            sp.batch,
+            (
+              SELECT COUNT(DISTINCT s.assignment_id)::int
+              FROM course_assignment_submissions s
+              JOIN course_assignments ca ON ca.id = s.assignment_id
+              WHERE s.student_id = u.id AND ca.course_id = $1
+            ) AS completed_assignments,
+            (
+              SELECT COUNT(DISTINCT sub.problem_id)::int
+              FROM submissions sub
+              JOIN course_coding_problems ccp ON ccp.id = sub.problem_id
+              WHERE sub.student_id = u.id AND ccp.course_id = $1 AND sub.status = 'ACCEPTED'
+            ) AS solved_problems
           FROM course_enrollments ce
           JOIN users u ON u.id = ce.student_id
+          LEFT JOIN student_profiles sp ON sp.user_id = u.id
           WHERE ce.course_id = $1 AND ce.status = 'enrolled'
           ORDER BY u.full_name ASC
         `,
@@ -534,7 +555,14 @@ export const getCourseById = asyncHandler(async (req, res) => {
       students = studentResult.rows.map((row) => ({
         id: row.id,
         fullName: row.full_name,
-        email: row.email
+        email: row.email,
+        rollNumber: row.roll_number || "-",
+        branch: row.branch || "-",
+        semester: row.semester || "-",
+        section: row.section || "-",
+        batch: row.batch || "-",
+        completedAssignments: row.completed_assignments || 0,
+        solvedProblems: row.solved_problems || 0
       }));
     }
 

@@ -12,6 +12,13 @@ export async function checkDatabaseConnection() {
   const client = await pool.connect();
 
   try {
+    await client.query(`
+      ALTER TABLE problems
+      ADD COLUMN IF NOT EXISTS target_branch VARCHAR(50) DEFAULT 'ALL',
+      ADD COLUMN IF NOT EXISTS target_semester VARCHAR(20) DEFAULT 'ALL',
+      ADD COLUMN IF NOT EXISTS target_batch VARCHAR(50) DEFAULT 'ALL',
+      ADD COLUMN IF NOT EXISTS allow_faculty_edit BOOLEAN NOT NULL DEFAULT TRUE;
+    `);
     const result = await client.query("SELECT NOW() AS current_time");
     return result.rows[0];
   } finally {

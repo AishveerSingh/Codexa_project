@@ -12,7 +12,8 @@ export default function FacultyStudentSubmissions() {
   const [problems, setProblems] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [filters, setFilters] = useState({
-    problemId: ""
+    problemId: "",
+    category: ""
   });
   const [studentStatus, setStudentStatus] = useState({
     loading: true,
@@ -49,14 +50,14 @@ export default function FacultyStudentSubmissions() {
         if (isMounted) {
           setStudentStatus({
             loading: false,
-            error: "Log in as faculty to review student submissions."
+            error: "Log in as faculty to review submissions."
           });
         }
         return;
       }
 
       try {
-        const data = await apiRequest(`/users/students/accessible/${studentId}`, {}, session.token);
+        const data = await apiRequest(`/users/${studentId}`, {}, session.token);
 
         if (isMounted) {
           setStudent(data);
@@ -82,7 +83,7 @@ export default function FacultyStudentSubmissions() {
 
     async function loadProblems() {
       try {
-        const data = await apiRequest("/problems");
+        const data = await apiRequest("/problems", {}, session?.token);
 
         if (isMounted) {
           setProblems(data);
@@ -113,12 +114,15 @@ export default function FacultyStudentSubmissions() {
 
       try {
         if (!session?.token) {
-          throw new Error("Log in as faculty to review student submissions.");
+          throw new Error("Log in as faculty to review submissions.");
         }
 
         const params = new URLSearchParams();
         if (filters.problemId) {
           params.set("problemId", filters.problemId);
+        }
+        if (filters.category) {
+          params.set("category", filters.category);
         }
 
         const data = await apiRequest(`/submissions/student/${studentId}?${params.toString()}`, {}, session.token);
@@ -150,37 +154,96 @@ export default function FacultyStudentSubmissions() {
     return () => {
       isMounted = false;
     };
-  }, [filters.problemId, session?.token, studentId]);
+  }, [filters.category, filters.problemId, session?.token, studentId]);
+
+  const courseSubs = submissions.filter((s) => s.category === "course");
+  const pbSubs = submissions.filter((s) => s.category === "problem_bank");
+  const courseAcc = courseSubs.filter((s) => s.status === "accepted").length;
+  const pbAcc = pbSubs.filter((s) => s.status === "accepted").length;
 
   return (
     <PlatformLayout
       role="faculty"
-      eyebrow="Submission Review"
-      title={student ? `${student.full_name}'s attempts` : "Student submission review"}
-      subtitle="Inspect coding attempts for students in your assigned courses without opening admin-only account controls."
+      eyebrow="Submission Audit Console"
+      title={student ? `${student.full_name}'s Progress & Attempts` : "Student submission review"}
+      subtitle="Inspect coding attempts for students separated by Course Workbench assignments vs Standalone Practice Problem Bank."
       meta={`${submissions.length} submissions`}
       actions={
         <Link className="auth-button ghost-button panel-action-button" to="/faculty/students">
           Back to students
         </Link>
       }
-      sidebarNote="This view gives faculty teaching visibility into attempts while still keeping access limited to students inside shared course assignments."
+      sidebarNote="This view gives faculty teaching visibility into attempts, clearly distinguishing course assignment submissions from independent practice bank runs."
     >
       {studentStatus.loading ? <p className="dashboard-copy">Loading student...</p> : null}
       {studentStatus.error ? <p className="form-status error">{studentStatus.error}</p> : null}
 
+      <div className="role-pill-bar" style={{ marginBottom: "1.25rem" }}>
+        <button
+          type="button"
+          className={`role-pill-btn student ${filters.category === "" ? "active" : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, category: "" }))}
+        >
+          <span>🌐 All Submissions ({submissions.length})</span>
+        </button>
+        <button
+          type="button"
+          className={`role-pill-btn faculty ${filters.category === "course" ? "active" : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, category: "course" }))}
+        >
+          <span>📚 Course Workbench</span>
+        </button>
+        <button
+          type="button"
+          className={`role-pill-btn admin ${filters.category === "problem_bank" ? "active" : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, category: "problem_bank" }))}
+        >
+          <span>💻 Practice Problem Bank</span>
+        </button>
+      </div>
+
       {student ? (
         <PlatformStats
-          items={[
-            { label: "Email", value: student.email, note: "Student account" },
-            { label: "Roll number", value: student.profile?.roll_number || "-", note: "Roster identity" },
-            { label: "Accepted", value: student.accepted_count, note: "Successful verdicts" }
-          ]}
+          items={
+            filters.category === "course"
+              ? [
+                  { label: "Course Submissions", value: courseSubs.length, note: "Course assignment attempts" },
+                  { label: "Course Accepted", value: courseAcc, note: "Passing course runs" },
+                  { label: "Course Success Rate", value: courseSubs.length > 0 ? `${Math.round((courseAcc / courseSubs.length) * 100)}%` : "0%", note: "Accuracy in courses" }
+                ]
+              : filters.category === "problem_bank"
+                ? [
+                    { label: "Problem Bank Practice", value: pbSubs.length, note: "Practice problem attempts" },
+                    { label: "Practice Accepted", value: pbAcc, note: "Passing practice runs" },
+                    { label: "Practice Success Rate", value: pbSubs.length > 0 ? `${Math.round((pbAcc / pbSubs.length) * 100)}%` : "0%", note: "Accuracy in practice bank" }
+                  ]
+                : [
+                    { label: "Course Submissions", value: `${courseAcc} / ${courseSubs.length} Accepted`, note: "Course assignment activity" },
+                    { label: "Problem Bank Practice", value: `${pbAcc} / ${pbSubs.length} Accepted`, note: "Standalone practice activity" },
+                    { label: "Roster Identity", value: student.profile?.roll_number ? `Roll: ${student.profile.roll_number}` : student.email, note: student.email }
+                  ]
+          }
         />
       ) : null}
 
       <PlatformSection label="Filters" title="Narrow the submission stream">
         <div className="filter-bar">
+          <select
+            aria-label="Filter submissions by category"
+            className="filter-select"
+            name="category"
+            value={filters.category}
+            onChange={(event) => {
+              setFilters((currentFilters) => ({
+                ...currentFilters,
+                category: event.target.value
+              }));
+            }}
+          >
+            <option value="">All Categories (Course & Problem Bank)</option>
+            <option value="course">Course Workbench</option>
+            <option value="problem_bank">Practice Problem Bank</option>
+          </select>
           <select
             aria-label="Filter submissions by problem"
             className="filter-select"
@@ -215,15 +278,27 @@ export default function FacultyStudentSubmissions() {
               <div className="history-list">
                 {submissions.map((submission) => (
                   <article className="history-card" key={submission.id}>
-                    <div className="question-card-top">
+                    <div className="question-card-top" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                       <span className={`status-pill ${submission.status}`}>
                         {submission.status.replaceAll("_", " ")}
                       </span>
-                      <span className="question-meta">
+                      <span
+                        className="role-badge-tag"
+                        style={{
+                          fontSize: "0.7rem",
+                          padding: "0.2rem 0.55rem",
+                          background: submission.category === "course" ? "rgba(192, 132, 252, 0.18)" : "rgba(56, 189, 248, 0.18)",
+                          color: submission.category === "course" ? "#c084fc" : "#38bdf8",
+                          border: submission.category === "course" ? "1px solid rgba(192, 132, 252, 0.4)" : "1px solid rgba(56, 189, 248, 0.4)"
+                        }}
+                      >
+                        {submission.category === "course" ? "📚 Course Workbench" : "💻 Practice Problem Bank"}
+                      </span>
+                      <span className="question-meta" style={{ marginLeft: "auto" }}>
                         {new Date(submission.submitted_at).toLocaleString()}
                       </span>
                     </div>
-                    <strong>{submission.problem_title}</strong>
+                    <strong style={{ fontSize: "1.05rem", display: "block", marginTop: "0.5rem" }}>{submission.problem_title}</strong>
                     <p className="question-meta">
                       {submission.language.toUpperCase()} | {submission.difficulty} | {submission.passed_test_cases}/
                       {submission.total_test_cases} tests

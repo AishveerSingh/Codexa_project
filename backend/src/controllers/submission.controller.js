@@ -311,6 +311,7 @@ export async function getAdminSubmissions(req, res, next) {
   const problemId = req.query.problemId?.trim() ?? "";
   const status = req.query.status?.trim().toLowerCase() ?? "";
   const language = req.query.language?.trim().toLowerCase() ?? "";
+  const category = req.query.category?.trim().toLowerCase() ?? "";
 
   if (status && !["accepted", "wrong_answer", "time_limit"].includes(status)) {
     return res.status(400).json({
@@ -321,6 +322,12 @@ export async function getAdminSubmissions(req, res, next) {
   if (language && !["cpp", "java", "python", "javascript"].includes(language)) {
     return res.status(400).json({
       message: "Language filter must be cpp, java, python, or javascript."
+    });
+  }
+
+  if (category && !["course", "problem_bank"].includes(category)) {
+    return res.status(400).json({
+      message: "Category filter must be course or problem_bank."
     });
   }
 
@@ -348,30 +355,62 @@ export async function getAdminSubmissions(req, res, next) {
       filters.push(`s.language = $${values.length}`);
     }
 
+    if (category) {
+      values.push(category);
+      filters.push(`s.category = $${values.length}`);
+    }
+
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
     const result = await pool.query(
       `
-        SELECT
-          s.id,
-          s.student_id,
-          u.full_name AS student_name,
-          u.email AS student_email,
-          s.problem_id,
-          p.title AS problem_title,
-          p.difficulty,
-          s.language,
-          s.source_code,
-          s.status,
-          s.passed_test_cases,
-          s.total_test_cases,
-          s.execution_time_ms,
-          s.memory_kb,
-          s.compiler_output,
-          s.submitted_at
-        FROM submissions s
-        JOIN users u ON u.id = s.student_id
-        JOIN problems p ON p.id = s.problem_id
+        SELECT * FROM (
+          SELECT
+            s.id,
+            s.student_id,
+            u.full_name AS student_name,
+            u.email AS student_email,
+            s.problem_id,
+            p.title AS problem_title,
+            p.difficulty,
+            s.language,
+            s.source_code,
+            s.status,
+            s.passed_test_cases,
+            s.total_test_cases,
+            s.execution_time_ms,
+            s.memory_kb,
+            s.compiler_output,
+            s.submitted_at,
+            'problem_bank' AS category
+          FROM submissions s
+          JOIN users u ON u.id = s.student_id
+          JOIN problems p ON p.id = s.problem_id
+
+          UNION ALL
+
+          SELECT
+            cps.id,
+            cps.student_id,
+            u.full_name AS student_name,
+            u.email AS student_email,
+            cps.course_problem_id AS problem_id,
+            ccp.title AS problem_title,
+            ccp.difficulty,
+            cps.language,
+            cps.source_code,
+            cps.status,
+            cps.passed_test_cases,
+            cps.total_test_cases,
+            cps.execution_time_ms,
+            cps.memory_kb,
+            cps.compiler_output,
+            cps.submitted_at,
+            'course' AS category
+          FROM course_problem_submissions cps
+          JOIN users u ON u.id = cps.student_id
+          JOIN course_coding_problems ccp ON ccp.id = cps.course_problem_id
+        ) s
         ${whereClause}
         ORDER BY s.submitted_at DESC
       `,

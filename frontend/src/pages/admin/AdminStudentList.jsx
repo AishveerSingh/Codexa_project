@@ -26,7 +26,9 @@ export default function AdminStudentList() {
   const session = getAdminSession();
   const [students, setStudents] = useState([]);
   const [filters, setFilters] = useState({
-    search: ""
+    search: "",
+    branch: "",
+    semester: ""
   });
   const [studentForm, setStudentForm] = useState(initialStudentForm);
   const [status, setStatus] = useState({
@@ -406,170 +408,283 @@ export default function AdminStudentList() {
     >
       {activeTab === "list" && (
         <>
-          <PlatformStats
-            items={[
-              {
-                label: "Students",
-                value: students.length,
-                note: "Visible under current filters"
-              },
-              {
-                label: "Total submissions",
-                value: students.reduce((sum, student) => sum + (student.submission_count || 0), 0),
-                note: "Combined student activity"
-              },
-              {
-                label: "Accepted",
-                value: students.reduce((sum, student) => sum + (student.accepted_count || 0), 0),
-                note: "Successful runs across students"
-              }
-            ]}
-          />
-
-          <PlatformSection label="Search" title="Find a student quickly">
-            <div className="filter-bar">
-              <input
-                aria-label="Search students"
-                className="filter-input"
-                name="search"
-                placeholder="Search by student name, email, or roll number"
-                type="search"
-                value={filters.search}
-                onChange={(event) => {
-                  setFilters({
-                    search: event.target.value
-                  });
-                }}
+          {/* Top Overview Metrics */}
+          {(() => {
+            const uniqueBranches = Array.from(new Set(students.map((s) => s.profile?.branch).filter(Boolean)));
+            const uniqueBatches = Array.from(new Set(students.map((s) => s.profile?.batch).filter(Boolean)));
+            return (
+              <PlatformStats
+                items={[
+                  {
+                    label: "Enrolled Students",
+                    value: students.length,
+                    note: "Total student accounts registered"
+                  },
+                  {
+                    label: "Academic Branches",
+                    value: uniqueBranches.length > 0 ? uniqueBranches.length : 1,
+                    note: uniqueBranches.length > 0 ? uniqueBranches.join(", ") : "All engineering branches"
+                  },
+                  {
+                    label: "Student Batches",
+                    value: uniqueBatches.length > 0 ? uniqueBatches.length : 1,
+                    note: uniqueBatches.length > 0 ? uniqueBatches.join(", ") : "Enrolled cohorts"
+                  }
+                ]}
               />
-            </div>
-          </PlatformSection>
+            );
+          })()}
 
-          <PlatformSection label="Roster" title="Open a student submission history">
-            {status.loading ? <p className="dashboard-copy">Loading students...</p> : null}
-            {status.error ? <p className="form-status error">{status.error}</p> : null}
+          {/* Student Directory Section */}
+          {(() => {
+            const filteredStudents = students.filter((student) => {
+              if (filters.branch && student.profile?.branch !== filters.branch) return false;
+              if (filters.semester && String(student.profile?.semester) !== String(filters.semester)) return false;
+              return true;
+            });
 
-            {!status.loading && !status.error ? (
-              <>
-                {students.length === 0 ? (
-                  <p className="dashboard-copy">No students matched the current search.</p>
-                ) : (
-                  <div className="question-list">
-                    {students.map((student) => (
-                      <article className="question-card" key={student.id}>
-                        <div className="question-card-top">
-                          <span className="difficulty-pill easy">student</span>
-                          <span className="question-meta">
-                            Joined {new Date(student.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <h3>{student.full_name}</h3>
-                        <p>{student.email}</p>
-                        <p className="question-meta">
-                          {student.profile?.roll_number || "No roll number"} | {student.profile?.branch || "-"} | Sem{" "}
-                          {student.profile?.semester || "-"} | Sec {student.profile?.section || "-"}
-                        </p>
-                        <div className="stats-inline">
-                          <span>{student.submission_count} submissions</span>
-                          <span>{student.accepted_count} accepted</span>
-                        </div>
-                        <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
-                          <Link
-                            className="auth-button admin-button detail-link inline-link-button"
-                            to={`/admin/students/${student.id}/submissions`}
-                            style={{ flex: 1, textAlign: "center", marginTop: 0 }}
-                          >
-                            View submissions
-                          </Link>
-                          <button
-                            className="auth-button ghost-button detail-link inline-link-button"
-                            type="button"
-                            style={{
-                              flex: 1,
-                              marginTop: 0,
-                              background: "transparent",
-                              border: "1px solid rgba(251, 146, 60, 0.4)",
-                              color: "#f8fafc"
-                            }}
-                            onClick={() => {
-                              if (activeResetStudentId === student.id) {
-                                setActiveResetStudentId(null);
-                                setNewPassword("");
-                                setResetStatus({ message: "", error: "" });
-                              } else {
-                                setActiveResetStudentId(student.id);
-                                setNewPassword("");
-                                setResetStatus({ message: "", error: "" });
-                              }
-                            }}
-                          >
-                            {activeResetStudentId === student.id ? "Cancel" : "Reset Password"}
-                          </button>
-                        </div>
-                        <div style={{ marginTop: "0.5rem" }}>
-                          <button
-                            className="auth-button ghost-button detail-link inline-link-button platform-danger-btn"
-                            type="button"
-                            onClick={() => handleDeleteStudent(student.id, student.full_name)}
-                          >
-                            Delete Student
-                          </button>
-                        </div>
-
-                        {activeResetStudentId === student.id ? (
-                          <form
-                            className="auth-form"
-                            onSubmit={(e) => handleResetPassword(e, student.id)}
-                            style={{
-                              marginTop: "1.2rem",
-                              padding: "1rem",
-                              border: "1px solid rgba(148, 163, 184, 0.16)",
-                              borderRadius: "16px",
-                              background: "rgba(15, 23, 42, 0.4)"
-                            }}
-                          >
-                            <span className="platform-sidebar-label" style={{ display: "block", marginBottom: "0.5rem" }}>
-                              New Password
-                            </span>
-                            <input
-                              type="password"
-                              placeholder="Min 8 characters"
-                              value={newPassword}
-                              onChange={(e) => setNewPassword(e.target.value)}
-                              minLength={8}
-                              required
-                              style={{
-                                width: "100%",
-                                padding: "0.75rem 1rem",
-                                border: "1px solid rgba(148, 163, 184, 0.24)",
-                                borderRadius: "14px",
-                                background: "rgba(241, 245, 249, 0.96)",
-                                color: "#0f172a",
-                                outline: "none"
-                              }}
-                            />
-                            <button
-                              className="auth-button admin-button"
-                              type="submit"
-                              disabled={isResetting}
-                              style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem" }}
-                            >
-                              {isResetting ? "Resetting..." : "Confirm Reset"}
-                            </button>
-                            {resetStatus.message ? (
-                              <p className="form-status success" style={{ fontSize: "0.9rem" }}>{resetStatus.message}</p>
-                            ) : null}
-                            {resetStatus.error ? (
-                              <p className="form-status error" style={{ fontSize: "0.9rem" }}>{resetStatus.error}</p>
-                            ) : null}
-                          </form>
-                        ) : null}
-                      </article>
-                    ))}
+            return (
+              <PlatformSection
+                label="Directory"
+                title="Student Roster & Accounts"
+                actions={
+                  <Link className="compact-btn compact-btn-primary" to="/admin/add-user?role=student" style={{ textDecoration: "none" }}>
+                    + Add New Student
+                  </Link>
+                }
+              >
+                {/* Search & Filter Toolbar */}
+                <div className="roster-toolbar">
+                  <div className="roster-search-wrapper">
+                    <svg className="roster-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input
+                      aria-label="Search students"
+                      className="roster-search-input"
+                      name="search"
+                      placeholder="Search by student name, email, or roll number..."
+                      type="search"
+                      value={filters.search}
+                      onChange={(event) => {
+                        setFilters((prev) => ({
+                          ...prev,
+                          search: event.target.value
+                        }));
+                      }}
+                    />
                   </div>
-                )}
-              </>
-            ) : null}
-          </PlatformSection>
+
+                  <select
+                    className="roster-filter-select"
+                    value={filters.branch}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, branch: e.target.value }))}
+                  >
+                    <option value="">All Branches</option>
+                    <option value="CSE">CSE</option>
+                    <option value="ECE">ECE</option>
+                    <option value="IT">IT</option>
+                    <option value="ME">ME</option>
+                    <option value="CE">CE</option>
+                    <option value="EE">EE</option>
+                  </select>
+
+                  <select
+                    className="roster-filter-select"
+                    value={filters.semester}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, semester: e.target.value }))}
+                  >
+                    <option value="">All Semesters</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                      <option key={sem} value={sem}>Semester {sem}</option>
+                    ))}
+                  </select>
+
+                  <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "500", marginLeft: "auto" }}>
+                    Showing {filteredStudents.length} of {students.length} students
+                  </span>
+                </div>
+
+                {status.loading ? <p className="dashboard-copy">Loading students...</p> : null}
+                {status.error ? <p className="form-status error">{status.error}</p> : null}
+
+                {!status.loading && !status.error ? (
+                  <>
+                    {filteredStudents.length === 0 ? (
+                      <p className="dashboard-copy" style={{ padding: "1.5rem 0", color: "#94a3b8" }}>
+                        No students found matching your filters.
+                      </p>
+                    ) : (
+                      <div className="roster-grid">
+                        {filteredStudents.map((student) => {
+                          const acceptedRuns = student.accepted_count || 0;
+                          const totalSubmissions = student.submission_count || 0;
+                          const progressPct = totalSubmissions > 0 ? Math.min(100, Math.round((acceptedRuns / totalSubmissions) * 100)) : 0;
+                          const initials = student.full_name
+                            ? student.full_name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()
+                            : "ST";
+
+                          return (
+                            <article className="student-roster-card" key={student.id}>
+                              <div className="student-card-header">
+                                <div className="student-info-meta">
+                                  <div className="student-avatar-circle">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <h3 className="student-name">{student.full_name}</h3>
+                                    <span className="student-email">{student.email}</span>
+                                  </div>
+                                </div>
+
+                                <div className="student-badges-container">
+                                  <span className="roll-number-badge">
+                                    ROLL: {student.profile?.roll_number || "N/A"}
+                                  </span>
+                                  <span className="academic-meta-badge">
+                                    {student.profile?.branch || "CSE"} • Sem {student.profile?.semester || "1"} • Sec {student.profile?.section || "A"} • {student.profile?.batch || "2023-2027"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ margin: "0.85rem 0" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: "600", marginBottom: "6px" }}>
+                                  <span style={{ color: "#94a3b8" }}>Platform Success Rate</span>
+                                  <span style={{ color: progressPct > 70 ? "#22c55e" : progressPct > 35 ? "#38bdf8" : "#f59e0b" }}>
+                                    {progressPct}% ({acceptedRuns} accepted)
+                                  </span>
+                                </div>
+                                <div className="progress-meter" style={{ height: "6px", background: "rgba(148, 163, 184, 0.12)", borderRadius: "6px", overflow: "hidden" }}>
+                                  <div
+                                    className="progress-meter-fill"
+                                    style={{
+                                      width: `${progressPct}%`,
+                                      background: progressPct > 70 ? "linear-gradient(90deg, #22c55e, #16a34a)" : progressPct > 35 ? "linear-gradient(90deg, #38bdf8, #0284c7)" : "linear-gradient(90deg, #f59e0b, #d97706)",
+                                      height: "100%",
+                                      borderRadius: "6px"
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="compact-action-row">
+                                <Link
+                                  className="compact-btn compact-btn-primary"
+                                  to={`/admin/students/${student.id}/submissions`}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                    <polyline points="15 3 21 3 21 9" />
+                                    <line x1="10" y1="14" x2="21" y2="3" />
+                                  </svg>
+                                  Open Student Progress →
+                                </Link>
+                                <button
+                                  className="compact-btn compact-btn-secondary"
+                                  type="button"
+                                  onClick={() => {
+                                    if (activeResetStudentId === student.id) {
+                                      setActiveResetStudentId(null);
+                                      setNewPassword("");
+                                      setResetStatus({ message: "", error: "" });
+                                    } else {
+                                      setActiveResetStudentId(student.id);
+                                      setNewPassword("");
+                                      setResetStatus({ message: "", error: "" });
+                                    }
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                  </svg>
+                                  {activeResetStudentId === student.id ? "Cancel" : "Reset Password"}
+                                </button>
+                                <button
+                                  className="compact-btn compact-btn-danger"
+                                  type="button"
+                                  onClick={() => handleDeleteStudent(student.id, student.full_name)}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2" />
+                                  </svg>
+                                  Delete
+                                </button>
+                              </div>
+
+                              {activeResetStudentId === student.id ? (
+                                <form
+                                  className="auth-form"
+                                  onSubmit={(e) => handleResetPassword(e, student.id)}
+                                  style={{
+                                    marginTop: "1rem",
+                                    padding: "1rem",
+                                    background: "rgba(15, 23, 42, 0.6)",
+                                    borderRadius: "8px",
+                                    border: "1px solid rgba(255, 255, 255, 0.1)"
+                                  }}
+                                >
+                                  <strong style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", color: "#f8fafc" }}>
+                                    Reset password for {student.full_name}
+                                  </strong>
+                                  <input
+                                    placeholder="Enter new password (min 6 chars)"
+                                    required
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    style={{
+                                      width: "100%",
+                                      padding: "0.55rem 0.8rem",
+                                      marginBottom: "0.75rem",
+                                      background: "rgba(0, 0, 0, 0.3)",
+                                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                                      borderRadius: "6px",
+                                      color: "#fff",
+                                      fontSize: "0.875rem"
+                                    }}
+                                  />
+                                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                                    <button
+                                      className="compact-btn compact-btn-primary"
+                                      type="submit"
+                                      disabled={isResetting}
+                                    >
+                                      {isResetting ? "Resetting..." : "Confirm Password Reset"}
+                                    </button>
+                                    <button
+                                      className="compact-btn compact-btn-secondary"
+                                      type="button"
+                                      onClick={() => setActiveResetStudentId(null)}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                  {resetStatus.message ? (
+                                    <p className="form-status success" style={{ fontSize: "0.85rem", marginTop: "0.5rem" }}>{resetStatus.message}</p>
+                                  ) : null}
+                                  {resetStatus.error ? (
+                                    <p className="form-status error" style={{ fontSize: "0.85rem", marginTop: "0.5rem" }}>{resetStatus.error}</p>
+                                  ) : null}
+                                </form>
+                              ) : null}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : null}
+              </PlatformSection>
+            );
+          })()}
         </>
       )}
 

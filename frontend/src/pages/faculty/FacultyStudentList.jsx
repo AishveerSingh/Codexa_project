@@ -101,16 +101,6 @@ export default function FacultyStudentList() {
             label: "Students",
             value: students.length,
             note: "Reachable from assigned courses"
-          },
-          {
-            label: "Total submissions",
-            value: students.reduce((sum, student) => sum + (student.submission_count || 0), 0),
-            note: "Combined coding activity"
-          },
-          {
-            label: "Accepted",
-            value: students.reduce((sum, student) => sum + (student.accepted_count || 0), 0),
-            note: "Successful verdicts"
           }
         ]}
       />
@@ -143,29 +133,63 @@ export default function FacultyStudentList() {
               <p className="dashboard-copy">No students matched the current search.</p>
             ) : (
               <div className="question-list">
-                {students.map((student) => (
-                  <article className="question-card" key={student.id}>
-                    <div className="question-card-top">
-                      <span className="difficulty-pill easy">student</span>
-                      <span className="question-meta">
-                        Joined {new Date(student.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <h3>{student.full_name}</h3>
-                    <p>{student.email}</p>
-                    <p className="question-meta">
-                      {student.profile?.roll_number || "No roll number"} | {student.profile?.branch || "-"} | Sem{" "}
-                      {student.profile?.semester || "-"} | Sec {student.profile?.section || "-"}
-                    </p>
-                    <div className="stats-inline">
-                      <span>{student.submission_count} submissions</span>
-                      <span>{student.accepted_count} accepted</span>
-                    </div>
-                    <Link className="auth-button student-button detail-link" to={`/faculty/students/${student.id}/submissions`}>
-                      View submissions
-                    </Link>
-                  </article>
-                ))}
+                {students.map((student) => {
+                  const acceptedRuns = student.accepted_count || 0;
+                  const totalSubmissions = student.submission_count || 0;
+                  const progressPct = totalSubmissions > 0 ? Math.min(100, Math.round((acceptedRuns / totalSubmissions) * 100)) : 0;
+
+                  return (
+                    <article className="question-card student-roster-progress-card" key={student.id}>
+                      <div className="question-card-top">
+                        <span className="difficulty-pill easy">
+                          {student.profile?.roll_number ? `Roll: ${student.profile.roll_number}` : "Student"}
+                        </span>
+                        <span className="question-meta">
+                          {student.profile?.branch || "-"} | Sem {student.profile?.semester || "-"} | Sec {student.profile?.section || "-"}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "8px 0" }}>
+                        <div className="sidebar-profile-avatar" style={{ width: "40px", height: "40px", fontSize: "14px" }}>
+                          {student.full_name ? student.full_name.slice(0, 2).toUpperCase() : "ST"}
+                        </div>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: "1.08rem" }}>{student.full_name}</h3>
+                          <p className="question-meta" style={{ margin: 0 }}>{student.email}</p>
+                        </div>
+                      </div>
+
+                      <div className="course-progress-block" style={{ margin: "1rem 0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>
+                          <span>Activity Success Rate</span>
+                          <span style={{ color: progressPct > 70 ? "#16a34a" : progressPct > 35 ? "#0284c7" : "#d97706" }}>
+                            {progressPct}% Success ({acceptedRuns} accepted)
+                          </span>
+                        </div>
+                        <div className="progress-meter" style={{ height: "10px", background: "rgba(148, 163, 184, 0.15)" }}>
+                          <div
+                            className="progress-meter-fill"
+                            style={{
+                              width: `${progressPct}%`,
+                              background: progressPct > 70 ? "linear-gradient(90deg, #22c55e, #16a34a)" : progressPct > 35 ? "linear-gradient(90deg, #38bdf8, #0284c7)" : "linear-gradient(90deg, #fbbf24, #d97706)",
+                              height: "100%",
+                              borderRadius: "6px"
+                            }}
+                          />
+                        </div>
+                        <div className="stats-inline" style={{ marginTop: "8px", fontSize: "0.8rem", color: "#64748b" }}>
+                          <span>Accepted Verdicts: {student.accepted_count || 0}</span>
+                        </div>
+                      </div>
+
+                      <div className="compact-action-row">
+                        <Link className="compact-btn compact-btn-primary" to={`/faculty/students/${student.id}/submissions`}>
+                          Open Student Progress & Attempts →
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </>

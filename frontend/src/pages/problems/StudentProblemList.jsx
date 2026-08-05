@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PlatformLayout, PlatformSection, PlatformStats } from "../../components/PlatformLayout";
+import { apiRequest } from "../../utils/api";
 import { getStudentSession, getFacultySession, getAdminSession } from "../../utils/session";
-
-const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
 
 export default function StudentProblemList() {
   const session = getStudentSession() || getFacultySession() || getAdminSession();
@@ -22,12 +21,7 @@ export default function StudentProblemList() {
 
     async function loadProblems() {
       try {
-        const response = await fetch(`${apiBaseUrl}/problems`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Unable to load coding questions.");
-        }
+        const data = await apiRequest("/problems", {}, session?.token);
 
         if (isMounted) {
           setProblems(data);
@@ -51,7 +45,7 @@ export default function StudentProblemList() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [session?.token]);
 
   return (
     <PlatformLayout

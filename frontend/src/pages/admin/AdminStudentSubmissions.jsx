@@ -15,7 +15,8 @@ export default function AdminStudentSubmissions() {
   const [filters, setFilters] = useState({
     problemId: "",
     status: "",
-    language: ""
+    language: "",
+    category: ""
   });
   const [studentStatus, setStudentStatus] = useState({
     loading: true,
@@ -149,6 +150,10 @@ export default function AdminStudentSubmissions() {
           params.set("language", filters.language);
         }
 
+        if (filters.category) {
+          params.set("category", filters.category);
+        }
+
         const response = await fetch(`${apiBaseUrl}/submissions?${params.toString()}`, {
           headers: {
             ...getAuthHeaders(session.token)
@@ -187,37 +192,98 @@ export default function AdminStudentSubmissions() {
     return () => {
       isMounted = false;
     };
-  }, [filters.language, filters.problemId, filters.status, session?.token, studentId]);
+  }, [filters.category, filters.language, filters.problemId, filters.status, session?.token, studentId]);
+
+  const courseSubs = submissions.filter((s) => s.category === "course");
+  const pbSubs = submissions.filter((s) => s.category === "problem_bank");
+  const courseAcc = courseSubs.filter((s) => s.status === "accepted").length;
+  const pbAcc = pbSubs.filter((s) => s.status === "accepted").length;
 
   return (
     <PlatformLayout
       role="admin"
-      eyebrow="Submission Review"
-      title={student ? `${student.full_name}'s attempts` : "Student submission review"}
-      subtitle="Filter by problem, status, and language to inspect the same kinds of attempt histories you would expect in a professional coding assessment tool."
+      eyebrow="Submission Audit Console"
+      title={student ? `${student.full_name}'s Progress & Attempts` : "Student submission review"}
+      subtitle="Separate progress and submission history for Course Workbench assignments vs. Standalone Practice Problem Bank."
       meta={`${submissions.length} visible submissions`}
       actions={
         <Link className="auth-button ghost-button panel-action-button" to="/admin/students">
           Back to students
         </Link>
       }
-      sidebarNote="Use this page as a submission audit console: filter the stream, inspect verdicts, and review source attempts with execution feedback."
+      sidebarNote="Use this page as a submission audit console: inspect course assignment progress vs practice problem bank attempts independently."
     >
       {studentStatus.loading ? <p className="dashboard-copy">Loading student...</p> : null}
       {studentStatus.error ? <p className="form-status error">{studentStatus.error}</p> : null}
 
+      {/* Category Selection Tabs */}
+      <div className="role-pill-bar" style={{ marginBottom: "1.25rem" }}>
+        <button
+          type="button"
+          className={`role-pill-btn student ${filters.category === "" ? "active" : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, category: "" }))}
+        >
+          <span>🌐 All Activity ({submissions.length})</span>
+        </button>
+        <button
+          type="button"
+          className={`role-pill-btn faculty ${filters.category === "course" ? "active" : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, category: "course" }))}
+        >
+          <span>📚 Course Workbench</span>
+        </button>
+        <button
+          type="button"
+          className={`role-pill-btn admin ${filters.category === "problem_bank" ? "active" : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, category: "problem_bank" }))}
+        >
+          <span>💻 Practice Problem Bank</span>
+        </button>
+      </div>
+
+      {/* Categorized Statistics Overview */}
       {student ? (
         <PlatformStats
-          items={[
-            { label: "Email", value: student.email, note: "Student account" },
-            { label: "Total submissions", value: student.submission_count, note: "All recorded attempts" },
-            { label: "Accepted", value: student.accepted_count, note: "Successful verdicts" }
-          ]}
+          items={
+            filters.category === "course"
+              ? [
+                  { label: "Course Submissions", value: courseSubs.length, note: "Course assignment attempts" },
+                  { label: "Course Accepted", value: courseAcc, note: "Passing course runs" },
+                  { label: "Course Success Rate", value: courseSubs.length > 0 ? `${Math.round((courseAcc / courseSubs.length) * 100)}%` : "0%", note: "Accuracy in courses" }
+                ]
+              : filters.category === "problem_bank"
+                ? [
+                    { label: "Problem Bank Practice", value: pbSubs.length, note: "Practice problem attempts" },
+                    { label: "Practice Accepted", value: pbAcc, note: "Passing practice runs" },
+                    { label: "Practice Success Rate", value: pbSubs.length > 0 ? `${Math.round((pbAcc / pbSubs.length) * 100)}%` : "0%", note: "Accuracy in practice bank" }
+                  ]
+                : [
+                    { label: "Course Submissions", value: `${courseAcc} / ${courseSubs.length} Accepted`, note: "Course assignment activity" },
+                    { label: "Problem Bank Practice", value: `${pbAcc} / ${pbSubs.length} Accepted`, note: "Standalone practice activity" },
+                    { label: "Total Account Activity", value: `${submissions.length} Total Runs`, note: student.email }
+                  ]
+          }
         />
       ) : null}
 
       <PlatformSection label="Filters" title="Narrow the submission stream">
         <div className="filter-bar">
+          <select
+            aria-label="Filter submissions by category"
+            className="filter-select"
+            name="category"
+            value={filters.category}
+            onChange={(event) => {
+              setFilters((currentFilters) => ({
+                ...currentFilters,
+                category: event.target.value
+              }));
+            }}
+          >
+            <option value="">All Categories (Course & Problem Bank)</option>
+            <option value="course">Course Workbench</option>
+            <option value="problem_bank">Practice Problem Bank</option>
+          </select>
           <select
             aria-label="Filter submissions by problem"
             className="filter-select"
@@ -287,15 +353,27 @@ export default function AdminStudentSubmissions() {
               <div className="history-list">
                 {submissions.map((submission) => (
                   <article className="history-card" key={submission.id}>
-                    <div className="question-card-top">
+                    <div className="question-card-top" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                       <span className={`status-pill ${submission.status}`}>
                         {submission.status.replaceAll("_", " ")}
                       </span>
-                      <span className="question-meta">
+                      <span
+                        className="role-badge-tag"
+                        style={{
+                          fontSize: "0.7rem",
+                          padding: "0.2rem 0.55rem",
+                          background: submission.category === "course" ? "rgba(192, 132, 252, 0.18)" : "rgba(56, 189, 248, 0.18)",
+                          color: submission.category === "course" ? "#c084fc" : "#38bdf8",
+                          border: submission.category === "course" ? "1px solid rgba(192, 132, 252, 0.4)" : "1px solid rgba(56, 189, 248, 0.4)"
+                        }}
+                      >
+                        {submission.category === "course" ? "📚 Course Workbench" : "💻 Practice Problem Bank"}
+                      </span>
+                      <span className="question-meta" style={{ marginLeft: "auto" }}>
                         {new Date(submission.submitted_at).toLocaleString()}
                       </span>
                     </div>
-                    <strong>{submission.problem_title}</strong>
+                    <strong style={{ fontSize: "1.05rem", display: "block", marginTop: "0.5rem" }}>{submission.problem_title}</strong>
                     <p className="question-meta">
                       {submission.language.toUpperCase()} - {submission.difficulty}
                     </p>

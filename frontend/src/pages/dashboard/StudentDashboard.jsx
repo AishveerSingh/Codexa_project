@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { PlatformLayout, PlatformSection, PlatformStats } from "../../components/PlatformLayout";
+import CourseAssessmentWorkspace from "../../components/CourseAssessmentWorkspace";
 import { getAuthHeaders, getStudentSession } from "../../utils/session";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
@@ -35,6 +36,7 @@ export default function StudentDashboard() {
   const location = useLocation();
   const [session] = useState(location.state?.session || getStudentSession());
   const user = session?.user;
+  const [activeView, setActiveView] = useState("overview");
   const [progress, setProgress] = useState(defaultProgress);
   const [progressStatus, setProgressStatus] = useState({
     loading: Boolean(user?.id),
@@ -123,25 +125,61 @@ export default function StudentDashboard() {
       }
       sidebarNote="Use this area like a coding platform hub: open the problem set, keep an eye on your success rate, and return often to build momentum."
     >
-      <PlatformStats
-        items={[
-          {
-            label: "Solved problems",
-            value: progress.reduce((sum, entry) => sum + (entry.solved_problems || 0), 0),
-            note: "Unique problems cleared"
-          },
-          {
-            label: "Section",
-            value: profile?.section || "-",
-            note: profile?.batch ? `Batch ${profile.batch}` : "Assigned section"
-          },
-          {
-            label: "Accepted runs",
-            value: progress.reduce((sum, entry) => sum + (entry.accepted_submissions || 0), 0),
-            note: "Successful submissions"
-          }
-        ]}
-      />
+      <div className="platform-tab-bar" style={{ marginBottom: "1.25rem" }}>
+        <button
+          type="button"
+          className={`platform-tab ${activeView === "overview" ? "active" : ""}`}
+          onClick={() => setActiveView("overview")}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+          </svg>
+          Overview & Stats
+        </button>
+        <button
+          type="button"
+          className={`platform-tab ${activeView === "assessment" ? "active" : ""}`}
+          onClick={() => setActiveView("assessment")}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          Assessment Workspace
+        </button>
+      </div>
+
+      {activeView === "assessment" ? (
+        <CourseAssessmentWorkspace
+          courseTitle="Introduction to Composites"
+          assignmentTitle="Week 1: Assignment 1"
+          dueDate="2026-08-05, 23:59 IST"
+          lastSubmission="2026-07-30, 13:12 IST"
+        />
+      ) : (
+        <>
+          <PlatformStats
+            items={[
+              {
+                label: "Solved problems",
+                value: progress.reduce((sum, entry) => sum + (entry.solved_problems || 0), 0),
+                note: "Unique problems cleared"
+              },
+              {
+                label: "Section",
+                value: profile?.section || "-",
+                note: profile?.batch ? `Batch ${profile.batch}` : "Assigned section"
+              },
+              {
+                label: "Accepted runs",
+                value: progress.reduce((sum, entry) => sum + (entry.accepted_submissions || 0), 0),
+                note: "Successful submissions"
+              }
+            ]}
+          />
 
       <PlatformSection
         label="Assigned Courses"
@@ -203,6 +241,8 @@ export default function StudentDashboard() {
           </div>
         ) : null}
       </PlatformSection>
+        </>
+      )}
 
     </PlatformLayout>
   );

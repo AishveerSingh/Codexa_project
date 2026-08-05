@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PlatformLayout, PlatformSection } from "../../components/PlatformLayout";
+import CourseAssessmentWorkspace from "../../components/CourseAssessmentWorkspace";
 import { apiRequest } from "../../utils/api";
 import { getStudentSession } from "../../utils/session";
 
@@ -10,6 +11,7 @@ export default function StudentCourseDetails() {
   const user = session?.user;
   const profile = user?.profile || null;
   const [data, setData] = useState(null);
+  const [activeTab, setActiveTab] = useState("assessment");
   const [status, setStatus] = useState({
     loading: true,
     error: ""
@@ -124,7 +126,42 @@ export default function StudentCourseDetails() {
 
       {!status.loading && !status.error && data ? (
         <>
-          <PlatformSection label="Study Material" title="Course resources">
+          <div className="platform-tab-bar" style={{ marginBottom: "1.25rem" }}>
+            <button
+              type="button"
+              className={`platform-tab ${activeTab === "assessment" ? "active" : ""}`}
+              onClick={() => setActiveTab("assessment")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              Assessment Workspace
+            </button>
+            <button
+              type="button"
+              className={`platform-tab ${activeTab === "overview" ? "active" : ""}`}
+              onClick={() => setActiveTab("overview")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+              </svg>
+              Course Overview & Resources
+            </button>
+          </div>
+
+          {activeTab === "assessment" ? (
+            <CourseAssessmentWorkspace
+              courseTitle={data.title ? `${data.code} - ${data.title}` : "Introduction to Composites"}
+              assignmentTitle={data.assignments?.[0]?.title || "Week 1: Assignment 1"}
+              dueDate={data.assignments?.[0]?.dueDate ? new Date(data.assignments[0].dueDate).toLocaleString() : "2026-08-05, 23:59 IST"}
+            />
+          ) : (
+            <>
+              <PlatformSection label="Study Material" title="Course resources">
             {data.materials.length === 0 ? <p className="dashboard-copy">No study material uploaded yet.</p> : null}
             <div className="history-list">
               {data.materials.map((material) => (
@@ -236,6 +273,8 @@ export default function StudentCourseDetails() {
           <Link className="auth-button student-button detail-link" to="/student/courses">
             Back to courses
           </Link>
+            </>
+          )}
         </>
       ) : null}
     </PlatformLayout>

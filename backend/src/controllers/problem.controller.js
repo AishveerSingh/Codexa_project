@@ -103,6 +103,9 @@ async function fetchProblemMetadata(client, problemId, includeHidden = false) {
 export async function getProblems(req, res, next) {
   const search = req.query.q?.trim() ?? "";
   const difficulty = req.query.difficulty?.trim().toLowerCase() ?? "";
+  const branchFilter = req.query.branch?.trim() ?? "";
+  const semesterFilter = req.query.semester?.trim() ?? "";
+  const batchFilter = req.query.batch?.trim() ?? "";
 
   if (difficulty && !["easy", "medium", "hard"].includes(difficulty)) {
     return res.status(400).json({
@@ -114,6 +117,25 @@ export async function getProblems(req, res, next) {
     const values = [];
     const filters = [];
 
+    // Check if requester is student for automatic target filtering
+    let studentProfile = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice("Bearer ".length).trim();
+      try {
+        const payload = verifyAuthToken(token);
+        if (payload?.role === "student" && payload?.userId) {
+          const profileRes = await pool.query(
+            "SELECT branch, semester, batch FROM student_profiles WHERE user_id = $1",
+            [payload.userId]
+          );
+          if (profileRes.rows.length > 0) {
+            studentProfile = profileRes.rows[0];
+          }
+        }
+      } catch (_e) {}
+    }
+
     if (search) {
       values.push(`%${search}%`);
       filters.push(`(p.title ILIKE $${values.length} OR p.statement ILIKE $${values.length})`);
@@ -122,6 +144,34 @@ export async function getProblems(req, res, next) {
     if (difficulty) {
       values.push(difficulty);
       filters.push(`p.difficulty = $${values.length}`);
+    }
+
+    if (studentProfile) {
+      if (studentProfile.branch) {
+        values.push(studentProfile.branch);
+        filters.push(`(p.target_branch = 'ALL' OR p.target_branch = $${values.length})`);
+      }
+      if (studentProfile.semester) {
+        values.push(String(studentProfile.semester));
+        filters.push(`(p.target_semester = 'ALL' OR p.target_semester = $${values.length})`);
+      }
+      if (studentProfile.batch) {
+        values.push(studentProfile.batch);
+        filters.push(`(p.target_batch = 'ALL' OR p.target_batch = $${values.length})`);
+      }
+    } else {
+      if (branchFilter && branchFilter !== "ALL") {
+        values.push(branchFilter);
+        filters.push(`(p.target_branch = $${values.length} OR p.target_branch = 'ALL')`);
+      }
+      if (semesterFilter && semesterFilter !== "ALL") {
+        values.push(semesterFilter);
+        filters.push(`(p.target_semester = $${values.length} OR p.target_semester = 'ALL')`);
+      }
+      if (batchFilter && batchFilter !== "ALL") {
+        values.push(batchFilter);
+        filters.push(`(p.target_batch = $${values.length} OR p.target_batch = 'ALL')`);
+      }
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
@@ -136,6 +186,10 @@ export async function getProblems(req, res, next) {
           p.output_format,
           p.constraints_text,
           p.examples_text,
+          p.target_branch,
+          p.target_semester,
+          p.target_batch,
+          p.allow_faculty_edit,
           p.created_at,
           COALESCE(ARRAY_REMOVE(ARRAY_AGG(DISTINCT pt.tag_name), NULL), '{}') AS tags,
           COUNT(tc.id) FILTER (WHERE tc.is_sample = TRUE)::int AS sample_test_case_count
@@ -168,7 +222,7 @@ export async function getProblemById(req, res, next) {
   try {
     const result = await pool.query(
       `
-        SELECT id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, created_at
+        SELECT id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, target_branch, target_semester, target_batch, allow_faculty_edit, created_at
         FROM problems
         WHERE id = $1
       `,
@@ -212,6 +266,10 @@ export async function createProblem(req, res, next) {
     outputFormat = "",
     constraintsText = "",
     examplesText = "",
+    targetBranch = "ALL",
+    targetSemester = "ALL",
+    targetBatch = "ALL",
+    allowFacultyEdit = true,
     tags = [],
     sampleTestCases = [],
     hiddenTestCases = []
@@ -246,10 +304,14 @@ export async function createProblem(req, res, next) {
           input_format,
           output_format,
           constraints_text,
-          examples_text
+          examples_text,
+          target_branch,
+          target_semester,
+          target_batch,
+          allow_faculty_edit
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, created_at
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, target_branch, target_semester, target_batch, allow_faculty_edit, created_at
       `,
       [
         title.trim(),
@@ -258,7 +320,11 @@ export async function createProblem(req, res, next) {
         inputFormat.trim() || null,
         outputFormat.trim() || null,
         constraintsText.trim() || null,
-        examplesText.trim() || null
+        examplesText.trim() || null,
+        targetBranch?.trim() || "ALL",
+        targetSemester?.trim() || "ALL",
+        targetBatch?.trim() || "ALL",
+        allowFacultyEdit !== false
       ]
     );
 
@@ -310,6 +376,10 @@ export async function updateProblem(req, res, next) {
     outputFormat = "",
     constraintsText = "",
     examplesText = "",
+    targetBranch = "ALL",
+    targetSemester = "ALL",
+    targetBatch = "ALL",
+    allowFacultyEdit = true,
     tags = [],
     sampleTestCases = [],
     hiddenTestCases = []
@@ -335,6 +405,30 @@ export async function updateProblem(req, res, next) {
   try {
     await client.query("BEGIN");
 
+    const existingRes = await client.query(
+      "SELECT allow_faculty_edit FROM problems WHERE id = $1",
+      [problemId]
+    );
+
+    if (existingRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "Coding question not found."
+      });
+    }
+
+    const isFaculty = req.auth?.role === "faculty";
+    if (isFaculty && existingRes.rows[0].allow_faculty_edit === false) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        message: "Admin has restricted editing permission for this practice question to admins only."
+      });
+    }
+
+    const finalAllowFacultyEdit = isFaculty
+      ? existingRes.rows[0].allow_faculty_edit
+      : allowFacultyEdit !== false;
+
     const result = await client.query(
       `
         UPDATE problems
@@ -345,9 +439,13 @@ export async function updateProblem(req, res, next) {
           input_format = $4,
           output_format = $5,
           constraints_text = $6,
-          examples_text = $7
-        WHERE id = $8
-        RETURNING id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, created_at
+          examples_text = $7,
+          target_branch = $8,
+          target_semester = $9,
+          target_batch = $10,
+          allow_faculty_edit = $11
+        WHERE id = $12
+        RETURNING id, title, difficulty, statement, input_format, output_format, constraints_text, examples_text, target_branch, target_semester, target_batch, allow_faculty_edit, created_at
       `,
       [
         title.trim(),
@@ -357,16 +455,13 @@ export async function updateProblem(req, res, next) {
         outputFormat.trim() || null,
         constraintsText.trim() || null,
         examplesText.trim() || null,
+        targetBranch?.trim() || "ALL",
+        targetSemester?.trim() || "ALL",
+        targetBatch?.trim() || "ALL",
+        finalAllowFacultyEdit,
         problemId
       ]
     );
-
-    if (result.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({
-        message: "Coding question not found."
-      });
-    }
 
     const problem = result.rows[0];
     await replaceProblemTags(client, problemId, normalizedTags);
@@ -409,6 +504,24 @@ export async function deleteProblem(req, res, next) {
   const { problemId } = req.params;
 
   try {
+    const existingRes = await pool.query(
+      "SELECT allow_faculty_edit FROM problems WHERE id = $1",
+      [problemId]
+    );
+
+    if (existingRes.rows.length === 0) {
+      return res.status(404).json({
+        message: "Coding question not found."
+      });
+    }
+
+    const isFaculty = req.auth?.role === "faculty";
+    if (isFaculty && existingRes.rows[0].allow_faculty_edit === false) {
+      return res.status(403).json({
+        message: "Admin has restricted deletion of this practice question to admins only."
+      });
+    }
+
     const result = await pool.query(
       `
         DELETE FROM problems
@@ -417,12 +530,6 @@ export async function deleteProblem(req, res, next) {
       `,
       [problemId]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "Coding question not found."
-      });
-    }
 
     await logAdminAction({
       adminId: req.auth?.userId,

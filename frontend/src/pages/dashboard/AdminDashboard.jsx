@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AccountSection from "../../components/AccountSection";
+import StudentProgressAnalytics from "../../components/StudentProgressAnalytics";
 import { PlatformLayout } from "../../components/PlatformLayout";
 import { getAdminSession, getAuthHeaders, saveAdminSession } from "../../utils/session";
 import { apiRequest } from "../../utils/api";
@@ -257,25 +258,6 @@ export default function AdminDashboard() {
             )}
           </strong>
         </article>
-
-        <article className="platform-stat-card">
-          <div className="stat-card-icon-wrapper yellow">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-          </div>
-          <span>Total Submissions</span>
-          <strong>
-            {submissionStatus.loading ? (
-              <span style={{ opacity: 0.5 }}>...</span>
-            ) : (
-              submissions.length.toLocaleString()
-            )}
-          </strong>
-        </article>
       </div>
 
 
@@ -321,6 +303,11 @@ export default function AdminDashboard() {
       {studentStatus.error && <p className="form-status error">{studentStatus.error}</p>}
       {facultyStatus.error && <p className="form-status error">{facultyStatus.error}</p>}
       {logStatus.error && <p className="form-status error">{logStatus.error}</p>}
+
+      {/* Student Progress Analytics Section — rendered on Analytics tab */}
+      {activeTab === "analytics" && (
+        <StudentProgressAnalytics role="admin" session={session} />
+      )}
 
       {/* Profile Management Section */}
       {activeTab === "overview" && (

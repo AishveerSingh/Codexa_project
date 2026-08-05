@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import ThemeToggle from "./ThemeToggle";
 import {
   clearStudentSession,
   clearFacultySession,
@@ -33,6 +34,7 @@ const facultyNavCategories = [
       { to: "/faculty/dashboard", label: "Dashboard", icon: "dashboard" },
       { to: "/faculty/courses", label: "Courses", icon: "courses" },
       { to: "/faculty/students", label: "Students", icon: "users" },
+      { to: "/faculty/dashboard?tab=analytics", label: "Analytics", icon: "analytics" },
       { to: "/faculty/problems", label: "Practice", icon: "problems" }
     ]
   },
@@ -57,9 +59,7 @@ const adminNavCategories = [
   {
     title: "MANAGEMENT",
     items: [
-      { to: "/admin/students?tab=add", label: "Add Student", icon: "add-student" },
-      { to: "/admin/faculty", label: "Add Faculty", icon: "add-faculty" },
-      { to: "/admin/students?tab=submissions", label: "All Submissions", icon: "submissions" },
+      { to: "/admin/add-user", label: "Add User", icon: "add-user" },
       { to: "/admin/dashboard?tab=analytics", label: "Analytics", icon: "analytics" }
     ]
   },
@@ -115,6 +115,7 @@ function getSidebarIcon(icon) {
           <polyline points="8 18 2 12 8 6" />
         </svg>
       );
+    case "add-user":
     case "add-student":
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -258,7 +259,7 @@ export function PlatformLayout({
         </button>
         <Link className="platform-mobile-brand" to="/">
           <span className="platform-brand-mark" style={{ display: "flex", alignItems: "center", marginRight: "0.25rem" }}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" style={{ display: "inline-block", verticalAlign: "middle" }}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" style={{ display: "inline-block", verticalAlign: "middle" }}>
               <defs>
                 <linearGradient id="codexa-grad-pl-mob" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#3B82F6" />
@@ -285,7 +286,7 @@ export function PlatformLayout({
           </span>
           <strong>codexa</strong>
         </Link>
-        <div style={{ width: "20px" }} />
+        <ThemeToggle inline={true} />
       </div>
 
       {isSidebarOpen && (
@@ -293,10 +294,10 @@ export function PlatformLayout({
       )}
 
       <aside className={`platform-sidebar ${isSidebarOpen ? "open" : ""}`}>
-        <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-          <Link className="platform-brand" to="/">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', paddingRight: '0.25rem', flexShrink: 0 }}>
+          <Link className="platform-brand" to="/" style={{ margin: 0 }}>
             <span className="platform-brand-mark" style={{ display: "flex", alignItems: "center" }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" style={{ display: "inline-block", verticalAlign: "middle" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="34" height="34" style={{ display: "inline-block", verticalAlign: "middle" }}>
                 <defs>
                   <linearGradient id="codexa-grad-pl" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#3B82F6" />
@@ -323,46 +324,47 @@ export function PlatformLayout({
             </span>
             <strong>codexa</strong>
           </Link>
-
-          <nav className="platform-nav" aria-label={`${role} navigation`}>
-            {categories.map((category) => (
-              <div key={category.title} style={{ display: 'contents' }}>
-                <div className="platform-nav-category-title">{category.title}</div>
-                {category.items.map((item) => (
-                  <Link
-                    className={`platform-nav-item ${isItemActive(location.pathname, location.search, item.to) ? "active" : ""}`}
-                    key={item.to + item.label}
-                    to={item.to}
-                  >
-                    {getSidebarIcon(item.icon)}
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            ))}
-
-            <button
-              onClick={handleLogout}
-              className="platform-nav-item platform-logout-btn"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              Logout
-            </button>
-          </nav>
+          <ThemeToggle inline={true} />
         </div>
+
+        <nav className="platform-nav" aria-label={`${role} navigation`}>
+          {categories.map((category) => (
+            <div key={category.title} style={{ display: 'contents' }}>
+              <div className="platform-nav-category-title">{category.title}</div>
+              {category.items.map((item) => (
+                <Link
+                  className={`platform-nav-item ${isItemActive(location.pathname, location.search, item.to) ? "active" : ""}`}
+                  key={item.to + item.label}
+                  to={item.to}
+                >
+                  {getSidebarIcon(item.icon)}
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          ))}
+
+          <button
+            onClick={handleLogout}
+            className="platform-nav-item platform-logout-btn"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Logout
+          </button>
+        </nav>
 
         <div className="sidebar-profile-card">
           <div className="sidebar-profile-avatar">
@@ -442,50 +444,6 @@ export function PlatformLayout({
                   <polyline points="8 6 2 12 8 18" />
                 </svg>
                 Problems
-              </Link>
-            </div>
-          )}
-          {role === "admin" && showQuickActions !== false && (
-            <div className="quick-actions-row" style={{ marginBottom: "1.5rem" }}>
-              <Link to="/admin/students?tab=add" className="quick-action-card">
-                <div className="quick-action-icon-wrapper green">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <line x1="19" y1="8" x2="19" y2="14" />
-                    <line x1="16" y1="11" x2="22" y2="11" />
-                  </svg>
-                </div>
-                <div className="quick-action-info">
-                  <h4>Add Student</h4>
-                  <p>Create student account with email & password</p>
-                </div>
-              </Link>
-
-              <Link to="/admin/faculty" className="quick-action-card">
-                <div className="quick-action-icon-wrapper orange">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                  </svg>
-                </div>
-                <div className="quick-action-info">
-                  <h4>Add Faculty</h4>
-                  <p>Create faculty account with email & password</p>
-                </div>
-              </Link>
-
-              <Link to="/admin/courses" className="quick-action-card">
-                <div className="quick-action-icon-wrapper purple">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                    <path d="M12 6v6l4 2" />
-                  </svg>
-                </div>
-                <div className="quick-action-info">
-                  <h4>Create Course</h4>
-                  <p>Add course for a specific semester</p>
-                </div>
               </Link>
             </div>
           )}

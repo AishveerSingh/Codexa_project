@@ -30,12 +30,18 @@ userRouter.post("/student-login", loginStudent);
 userRouter.get("/me", requireAuth, getCurrentUser);
 userRouter.put("/me", requireAuth, updateCurrentUser);
 userRouter.put("/me/password", requireAuth, changeCurrentUserPassword);
+userRouter.get("/students", requireAuth, requireRole("admin"), (req, res, next) => {
+  req.query.role = "student";
+  return getUsers(req, res, next);
+});
 userRouter.get("/students/accessible", requireAuth, requireMongoUser, getAccessibleStudents);
 userRouter.get("/students/accessible/:studentId", requireAuth, requireMongoUser, getAccessibleStudentById);
 
 userRouter.get("/", requireAuth, requireRole("admin"), getUsers);
-userRouter.get("/:userId", requireAuth, requireRole("admin"), getUserById);
-userRouter.put("/:userId/reset-password", requireAuth, requireRole("admin"), resetStudentPassword);
-userRouter.delete("/:userId", requireAuth, requireRole("admin"), deleteUser);
+
+const uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+userRouter.get(`/:userId(${uuidPattern})`, requireAuth, requireRole("admin"), getUserById);
+userRouter.put(`/:userId(${uuidPattern})/reset-password`, requireAuth, requireRole("admin"), resetStudentPassword);
+userRouter.delete(`/:userId(${uuidPattern})`, requireAuth, requireRole("admin"), deleteUser);
 
 export default userRouter;

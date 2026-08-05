@@ -45,9 +45,19 @@ function getAudienceLabel(course) {
   return `${course.branchTargets.join(", ")} | Sem ${course.semesterTargets.join(", ")} | Sec ${course.sectionTargets.join(", ")}`;
 }
 
+function getStudentCourseProgress(student, totalAssignments, totalProblems) {
+  const totalItems = (totalAssignments || 0) + (totalProblems || 0);
+  if (totalItems === 0) return 0;
+  const completedAssig = student.completedAssignments || 0;
+  const solvedProb = student.solvedProblems || 0;
+  return Math.min(100, Math.round(((completedAssig + solvedProb) / totalItems) * 100));
+}
+
 export default function CourseWorkspace({ role, session }) {
   const { courseId } = useParams();
   const [data, setData] = useState(null);
+  const [activeTab, setActiveTab] = useState("workbench");
+  const [rosterSearch, setRosterSearch] = useState("");
   const [status, setStatus] = useState({
     loading: true,
     error: ""
@@ -261,85 +271,224 @@ export default function CourseWorkspace({ role, session }) {
             ]}
           />
 
-          {isFaculty ? (
-            <PlatformSection label="Course Studio" title="Teaching workbench for this course">
-              <div className="faculty-workbench">
-                <article className="faculty-workbench-main">
-                  <span className="faculty-feature-label">Active course</span>
-                  <h3>{data.code}</h3>
-                  <p>{data.title}</p>
-                  <div className="faculty-chip-row">
-                    <span className="tag-pill">{getAudienceLabel(data)}</span>
-                    <span className="tag-pill">Batch {data.batchTargets.join(", ")}</span>
-                    <span className="tag-pill">{data.students.length} students</span>
-                  </div>
-                </article>
-                <article className="faculty-workbench-side">
-                  <strong>Assigned faculty</strong>
-                  <p>{data.faculty.map((member) => member.fullName).join(", ") || "No faculty assigned"}</p>
-                  <strong>Purpose</strong>
-                  <p>Use this page to build, update, and manage the learning experience for this one course.</p>
-                </article>
-              </div>
-              <div className="faculty-feature-grid">
-                {facultyActionCards.map((card) => (
-                  <article className="faculty-mini-panel" key={card.title}>
-                    <strong>{card.title}</strong>
-                    <span className="faculty-mini-metric">{card.metric}</span>
-                    <p>{card.note}</p>
-                  </article>
-                ))}
-              </div>
-            </PlatformSection>
-          ) : null}
+          <div className="platform-tab-bar" style={{ marginBottom: "1.5rem" }}>
+            <button
+              type="button"
+              className={`platform-tab ${activeTab === "workbench" ? "active" : ""}`}
+              onClick={() => setActiveTab("workbench")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+              </svg>
+              Course Workbench
+            </button>
 
-          <PlatformSection label="Course Brief" title={isFaculty ? "Course context for publishing" : "Complete course details"}>
-            <div className="history-list">
-              <article className="history-card faculty-overview-card">
-                <strong>Course description</strong>
-                <p>{data.description || "No description added yet."}</p>
-                <div className="faculty-chip-row">
-                  <span className="tag-pill">{data.branchTargets.join(", ")}</span>
-                  <span className="tag-pill">Sem {data.semesterTargets.join(", ")}</span>
-                  <span className="tag-pill">Sec {data.sectionTargets.join(", ")}</span>
-                  <span className="tag-pill">Batch {data.batchTargets.join(", ")}</span>
+            <button
+              type="button"
+              className={`platform-tab ${activeTab === "roster" ? "active" : ""}`}
+              onClick={() => setActiveTab("roster")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              Student Roster & Progress ({data.students.length})
+            </button>
+          </div>
+
+          {activeTab === "roster" ? (
+            <PlatformSection label="Roster & Progress" title="Enrolled students & course completion metrics">
+              <div className="filter-bar" style={{ marginBottom: "1.25rem" }}>
+                <input
+                  aria-label="Search student roster"
+                  className="filter-input"
+                  placeholder="Search student by name, roll number, email, or section..."
+                  type="search"
+                  value={rosterSearch}
+                  onChange={(e) => setRosterSearch(e.target.value)}
+                />
+              </div>
+
+              {data.students.length === 0 ? (
+                <p className="dashboard-copy">No students enrolled in this course yet.</p>
+              ) : null}
+
+              {data.students.length > 0 ? (
+                <div className="question-list">
+                  {data.students
+                    .filter((s) => {
+                      if (!rosterSearch.trim()) return true;
+                      const q = rosterSearch.toLowerCase();
+                      return (
+                        s.fullName?.toLowerCase().includes(q) ||
+                        s.email?.toLowerCase().includes(q) ||
+                        s.rollNumber?.toLowerCase().includes(q) ||
+                        s.section?.toLowerCase().includes(q) ||
+                        s.branch?.toLowerCase().includes(q)
+                      );
+                    })
+                    .map((student) => {
+                      const progressPct = getStudentCourseProgress(student, data.assignments.length, data.codingProblems.length);
+
+                      return (
+                        <article className="question-card student-roster-progress-card" key={student.id}>
+                          <div className="question-card-top">
+                            <span className="difficulty-pill easy">
+                              {student.rollNumber && student.rollNumber !== "-" ? `Roll: ${student.rollNumber}` : "Student"}
+                            </span>
+                            <span className="question-meta">
+                              {student.branch} | Sem {student.semester} | Sec {student.section}
+                            </span>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "8px 0" }}>
+                            <div className="sidebar-profile-avatar" style={{ width: "38px", height: "38px", fontSize: "14px" }}>
+                              {student.fullName ? student.fullName.slice(0, 2).toUpperCase() : "ST"}
+                            </div>
+                            <div>
+                              <h3 style={{ margin: 0, fontSize: "1.05rem" }}>{student.fullName}</h3>
+                              <p className="question-meta" style={{ margin: 0 }}>{student.email}</p>
+                            </div>
+                          </div>
+
+                          <div className="course-progress-block" style={{ margin: "1rem 0" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px" }}>
+                              <span>Course Completion</span>
+                              <span style={{ color: progressPct > 70 ? "#16a34a" : progressPct > 35 ? "#0284c7" : "#d97706" }}>
+                                {progressPct}% Completed
+                              </span>
+                            </div>
+                            <div className="progress-meter" style={{ height: "10px", background: "rgba(148, 163, 184, 0.15)" }}>
+                              <div
+                                className="progress-meter-fill"
+                                style={{
+                                  width: `${progressPct}%`,
+                                  background: progressPct > 70 ? "linear-gradient(90deg, #22c55e, #16a34a)" : progressPct > 35 ? "linear-gradient(90deg, #38bdf8, #0284c7)" : "linear-gradient(90deg, #fbbf24, #d97706)",
+                                  height: "100%",
+                                  borderRadius: "6px"
+                                }}
+                              />
+                            </div>
+                            <div className="stats-inline" style={{ marginTop: "8px", fontSize: "0.8rem", color: "#64748b" }}>
+                              <span>Assignments: {student.completedAssignments || 0} / {data.assignments.length}</span>
+                              <span>Coding Problems: {student.solvedProblems || 0} / {data.codingProblems.length}</span>
+                            </div>
+                          </div>
+
+                          <div className="compact-action-row">
+                            <Link className="compact-btn compact-btn-primary" to={`/${accentRole}/students/${student.id}/submissions`}>
+                              Open Student Progress →
+                            </Link>
+                          </div>
+                        </article>
+                      );
+                    })}
                 </div>
-                <p className="question-meta">
-                  Faculty: {data.faculty.map((member) => member.fullName).join(", ") || "No faculty assigned"}
-                </p>
-              </article>
-            </div>
-          </PlatformSection>
-
-          <PlatformSection label="Roster" title={isFaculty ? "Student list for this course" : "Enrolled students"}>
-            {data.students.length === 0 ? <p className="dashboard-copy">No students enrolled yet.</p> : null}
-            {data.students.length > 0 ? (
-              <div className="table-shell">
-                <table className="course-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.students.map((student) => (
-                      <tr key={student.id}>
-                        <td>{student.fullName}</td>
-                        <td>{student.email}</td>
-                        <td>
-                          <Link className={`auth-button ${accentButtonClass} detail-link`} to={`/${accentRole}/students/${student.id}/submissions`}>
-                            Review attempts
-                          </Link>
-                        </td>
-                      </tr>
+              ) : null}
+            </PlatformSection>
+          ) : (
+            <>
+              {isFaculty ? (
+                <PlatformSection label="Course Studio" title="Teaching workbench for this course">
+                  <div className="faculty-workbench">
+                    <article className="faculty-workbench-main">
+                      <span className="faculty-feature-label">Active course</span>
+                      <h3>{data.code}</h3>
+                      <p>{data.title}</p>
+                      <div className="faculty-chip-row">
+                        <span className="tag-pill">{getAudienceLabel(data)}</span>
+                        <span className="tag-pill">Batch {data.batchTargets.join(", ")}</span>
+                        <span className="tag-pill">{data.students.length} students</span>
+                      </div>
+                    </article>
+                    <article className="faculty-workbench-side">
+                      <strong>Assigned faculty</strong>
+                      <p>{data.faculty.map((member) => member.fullName).join(", ") || "No faculty assigned"}</p>
+                      <strong>Purpose</strong>
+                      <p>Use this page to build, update, and manage the learning experience for this one course.</p>
+                    </article>
+                  </div>
+                  <div className="faculty-feature-grid">
+                    {facultyActionCards.map((card) => (
+                      <article className="faculty-mini-panel" key={card.title}>
+                        <strong>{card.title}</strong>
+                        <span className="faculty-mini-metric">{card.metric}</span>
+                        <p>{card.note}</p>
+                      </article>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </PlatformSection>
+                  </div>
+                </PlatformSection>
+              ) : null}
+
+              <PlatformSection label="Course Brief" title={isFaculty ? "Course context for publishing" : "Complete course details"}>
+                <div className="history-list">
+                  <article className="history-card faculty-overview-card">
+                    <strong>Course description</strong>
+                    <p>{data.description || "No description added yet."}</p>
+                    <div className="faculty-chip-row">
+                      <span className="tag-pill">{data.branchTargets.join(", ")}</span>
+                      <span className="tag-pill">Sem {data.semesterTargets.join(", ")}</span>
+                      <span className="tag-pill">Sec {data.sectionTargets.join(", ")}</span>
+                      <span className="tag-pill">Batch {data.batchTargets.join(", ")}</span>
+                    </div>
+                    <p className="question-meta">
+                      Faculty: {data.faculty.map((member) => member.fullName).join(", ") || "No faculty assigned"}
+                    </p>
+                  </article>
+                </div>
+              </PlatformSection>
+
+              <PlatformSection label="Roster" title={isFaculty ? "Student list for this course" : "Enrolled students"}>
+                {data.students.length === 0 ? <p className="dashboard-copy">No students enrolled yet.</p> : null}
+                {data.students.length > 0 ? (
+                  <div className="table-shell">
+                    <table className="course-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Roll No.</th>
+                          <th>Email</th>
+                          <th>Course Progress</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.students.map((student) => {
+                          const progressPct = getStudentCourseProgress(student, data.assignments.length, data.codingProblems.length);
+
+                          return (
+                            <tr key={student.id}>
+                              <td><strong>{student.fullName}</strong></td>
+                              <td>{student.rollNumber || "-"}</td>
+                              <td>{student.email}</td>
+                              <td>
+                                <div style={{ minWidth: "140px" }}>
+                                  <div style={{ fontSize: "0.8rem", fontWeight: "600", color: progressPct > 70 ? "#16a34a" : "#0284c7" }}>
+                                    {progressPct}% Completed
+                                  </div>
+                                  <div className="progress-meter" style={{ height: "6px", marginTop: "2px" }}>
+                                    <div className="progress-meter-fill" style={{ width: `${progressPct}%`, background: progressPct > 70 ? "#16a34a" : "#0284c7" }} />
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <Link className={`auth-button ${accentButtonClass} detail-link`} to={`/${accentRole}/students/${student.id}/submissions`}>
+                                  Open Student Progress →
+                                </Link>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+              </PlatformSection>
 
           <PlatformSection label="Assignments" title={isFaculty ? "Assignment stream" : "Current assignment list"}>
             {data.assignments.length === 0 ? <p className="dashboard-copy">No assignments published yet.</p> : null}
@@ -651,6 +800,8 @@ export default function CourseWorkspace({ role, session }) {
               </button>
             </form>
           </PlatformSection>
+            </>
+          )}
         </>
       ) : null}
     </PlatformLayout>

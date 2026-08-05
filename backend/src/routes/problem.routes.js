@@ -12,8 +12,8 @@ const problemRouter = Router();
 
 problemRouter.get("/", getProblems);
 problemRouter.get("/:problemId", getProblemById);
-problemRouter.post("/", requireAuth, requireRole("admin"), createProblem);
-problemRouter.put("/:problemId", requireAuth, requireRole("admin"), updateProblem);
-problemRouter.delete("/:problemId", requireAuth, requireRole("admin"), deleteProblem);
+problemRouter.post("/", requireAuth, requireRole("admin", "faculty"), createProblem);
+problemRouter.put("/:problemId", requireAuth, requireRole("admin", "faculty"), updateProblem);
+problemRouter.delete("/:problemId", requireAuth, requireRole("admin", "faculty"), deleteProblem);
 
 export default problemRouter;

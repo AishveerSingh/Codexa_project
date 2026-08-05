@@ -19,6 +19,10 @@ function buildForm(problem) {
     outputFormat: problem.output_format || "",
     constraintsText: problem.constraints_text || "",
     examplesText: problem.examples_text || "",
+    targetBranch: problem.target_branch || "ALL",
+    targetSemester: problem.target_semester || "ALL",
+    targetBatch: problem.target_batch || "ALL",
+    allowFacultyEdit: problem.allow_faculty_edit !== false,
     tagsText: (problem.tags || []).join(", ")
   };
 }
@@ -44,6 +48,10 @@ export default function AdminProblemDetails() {
     outputFormat: "",
     constraintsText: "",
     examplesText: "",
+    targetBranch: "ALL",
+    targetSemester: "ALL",
+    targetBatch: "ALL",
+    allowFacultyEdit: true,
     tagsText: "",
     sampleInput: "",
     sampleOutput: ""
@@ -99,15 +107,15 @@ export default function AdminProblemDetails() {
   }, [problemId, session?.token]);
 
   function handleChange(event) {
-    const { name, value } = event.target;
+    const { name, value, type, checked } = event.target;
 
     setForm((currentForm) => ({
       ...currentForm,
-      [name]: value
+      [name]: type === "checkbox" ? checked : value
     }));
   }
 
-  async function handleUpdate(event) {
+  async function handleSave(event) {
     event.preventDefault();
     setIsSaving(true);
     setActionMessage("");
@@ -150,6 +158,10 @@ export default function AdminProblemDetails() {
           outputFormat: form.outputFormat,
           constraintsText: form.constraintsText,
           examplesText: form.examplesText,
+          targetBranch: form.targetBranch,
+          targetSemester: form.targetSemester,
+          targetBatch: form.targetBatch,
+          allowFacultyEdit: form.allowFacultyEdit,
           tags,
           sampleTestCases: finalSampleCases,
           hiddenTestCases: finalHiddenCases
@@ -282,6 +294,22 @@ export default function AdminProblemDetails() {
                   </span>
                 </div>
 
+                {/* Target Audience & Permission Badges */}
+                <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", margin: "1rem 0" }}>
+                  <span className="role-badge-tag" style={{ background: "rgba(14, 165, 233, 0.15)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                    🎯 Branch: {problem.target_branch || "ALL"}
+                  </span>
+                  <span className="role-badge-tag" style={{ background: "rgba(168, 85, 247, 0.15)", color: "#c084fc", border: "1px solid rgba(192, 132, 252, 0.3)" }}>
+                    🎓 Semester: {problem.target_semester === "ALL" ? "All Semesters" : `Sem ${problem.target_semester}`}
+                  </span>
+                  <span className="role-badge-tag" style={{ background: "rgba(34, 197, 94, 0.15)", color: "#4ade80", border: "1px solid rgba(74, 222, 128, 0.3)" }}>
+                    📅 Batch: {problem.target_batch || "ALL"}
+                  </span>
+                  <span className="role-badge-tag" style={{ background: problem.allow_faculty_edit ? "rgba(234, 179, 8, 0.15)" : "rgba(239, 68, 68, 0.15)", color: problem.allow_faculty_edit ? "#fde047" : "#f87171", border: problem.allow_faculty_edit ? "1px solid rgba(234, 179, 8, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)" }}>
+                    {problem.allow_faculty_edit ? "✏️ Faculty Editable" : "🔒 Admin Only"}
+                  </span>
+                </div>
+
                 <p className="detail-copy">
                   Review how students will see this prompt and confirm the question quality before
                   sharing more tasks.
@@ -364,7 +392,7 @@ export default function AdminProblemDetails() {
                 </div>
               </>
             ) : (
-              <form className="auth-form edit-problem-form" onSubmit={handleUpdate}>
+              <form className="auth-form edit-problem-form" onSubmit={handleSave}>
                 <label className="form-field" htmlFor="title">
                   Question title
                 </label>
@@ -390,6 +418,70 @@ export default function AdminProblemDetails() {
                   onChange={handleChange}
                   placeholder="array, strings, sorting"
                 />
+
+                <div style={{ margin: "1.5rem 0 1rem", borderTop: "1px solid rgba(148, 163, 184, 0.12)", paddingTop: "1rem" }}>
+                  <h3 style={{ fontSize: "1.05rem", margin: "0 0 0.25rem 0" }}>🎯 Target Audience & Permissions</h3>
+                  <p className="detail-copy" style={{ marginTop: 0, fontSize: "0.85rem" }}>
+                    Restrict visibility by student cohort and control whether faculty instructors are permitted to edit this problem.
+                  </p>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
+                    <div>
+                      <label className="form-field" htmlFor="targetBranch">Target Branch</label>
+                      <select id="targetBranch" name="targetBranch" value={form.targetBranch} onChange={handleChange} className="filter-select" style={{ width: "100%" }}>
+                        <option value="ALL">🌐 All Branches</option>
+                        <option value="CSE">CSE</option>
+                        <option value="IT">IT</option>
+                        <option value="ECE">ECE</option>
+                        <option value="ME">ME</option>
+                        <option value="CE">CE</option>
+                        <option value="EE">EE</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="form-field" htmlFor="targetSemester">Target Semester</label>
+                      <select id="targetSemester" name="targetSemester" value={form.targetSemester} onChange={handleChange} className="filter-select" style={{ width: "100%" }}>
+                        <option value="ALL">🌐 All Semesters</option>
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                        <option value="3">Semester 3</option>
+                        <option value="4">Semester 4</option>
+                        <option value="5">Semester 5</option>
+                        <option value="6">Semester 6</option>
+                        <option value="7">Semester 7</option>
+                        <option value="8">Semester 8</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="form-field" htmlFor="targetBatch">Target Batch</label>
+                      <select id="targetBatch" name="targetBatch" value={form.targetBatch} onChange={handleChange} className="filter-select" style={{ width: "100%" }}>
+                        <option value="ALL">🌐 All Batches</option>
+                        <option value="2023-2027">Batch 2023-2027</option>
+                        <option value="2024-2028">Batch 2024-2028</option>
+                        <option value="2025-2029">Batch 2025-2029</option>
+                        <option value="2026-2030">Batch 2026-2030</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: "1.2rem", background: "rgba(255, 255, 255, 0.03)", padding: "0.85rem 1.1rem", borderRadius: "12px", border: "1px solid rgba(148, 163, 184, 0.15)" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}>
+                      <input
+                        type="checkbox"
+                        name="allowFacultyEdit"
+                        checked={form.allowFacultyEdit}
+                        onChange={handleChange}
+                        style={{ width: "18px", height: "18px", accentColor: "#0284c7", cursor: "pointer" }}
+                      />
+                      <span>Allow Faculty Instructors to edit or modify this question</span>
+                    </label>
+                    <p style={{ margin: "0.3rem 0 0 2rem", fontSize: "0.8rem", color: "#94a3b8" }}>
+                      If unchecked, only Platform Administrators will be allowed to modify or delete this practice question.
+                    </p>
+                  </div>
+                </div>
 
                 <label className="form-field" htmlFor="statement">
                   Problem statement

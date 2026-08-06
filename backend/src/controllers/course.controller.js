@@ -784,33 +784,38 @@ export const runCourseCodingProblem = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "Course coding problem not found." });
   }
 
-  const sampleTestCaseResult = await pool.query(
-    `
-      SELECT id, input_data, expected_output, is_sample, sort_order
-      FROM course_problem_test_cases
-      WHERE course_problem_id = $1
-        AND is_sample = TRUE
-      ORDER BY sort_order ASC, created_at ASC
-    `,
-    [req.params.problemId]
-  );
+  let testCasesToRun = sampleTestCaseResult.rows;
+
+  if (testCasesToRun.length === 0) {
+    const allTestCaseResult = await pool.query(
+      `
+        SELECT id, input_data, expected_output, is_sample, sort_order
+        FROM course_problem_test_cases
+        WHERE course_problem_id = $1
+        ORDER BY sort_order ASC, created_at ASC
+      `,
+      [req.params.problemId]
+    );
+    testCasesToRun = allTestCaseResult.rows;
+  }
+
+  if (testCasesToRun.length === 0) {
+    testCasesToRun = [
+      {
+        id: "course-problem-run",
+        input_data: "",
+        expected_output: "",
+        is_sample: true,
+        sort_order: 0
+      }
+    ];
+  }
 
   const executionResult = await executeSubmission({
     language: payload.language,
     sourceCode: payload.sourceCode,
     problemId: req.params.problemId,
-    testCases:
-      sampleTestCaseResult.rows.length > 0
-        ? sampleTestCaseResult.rows
-        : [
-            {
-              id: "course-problem-run",
-              input_data: "",
-              expected_output: "",
-              is_sample: true,
-              sort_order: 0
-            }
-          ]
+    testCases: testCasesToRun
   });
 
   res.json({

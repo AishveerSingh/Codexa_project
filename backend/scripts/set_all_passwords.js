@@ -18,11 +18,11 @@ async function main() {
     const password = "12345678";
     const saltRounds = 10;
     const hash = await bcrypt.hash(password, saltRounds);
-    
-    await pool.query("UPDATE users SET password_hash = $1 WHERE email IN ($2, $3, $4)", [hash, "admin_main@college.com", "aishveer_2421002@college.com", "akshay_50@college.com"]);
-    console.log("Updated accounts password to 12345678 successfully!");
+
+    const result = await pool.query("UPDATE users SET password_hash = $1", [hash]);
+    console.log(`Updated password for all ${result.rowCount} users to '12345678' successfully!`);
   } catch (err) {
-    console.error(err);
+    console.error("Error updating passwords:", err);
   } finally {
     await pool.end();
   }

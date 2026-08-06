@@ -154,8 +154,11 @@ export default function CourseProblemWorkspace({ role, session }) {
             }
           : current
       );
+      const isAccepted = result.submission.status === "accepted";
       setRunStatus({
-        success: "Solution submitted successfully.",
+        success: isAccepted
+          ? "All test cases passed! (Including all hidden test cases)"
+          : "Solution submitted successfully.",
         error: "",
         latestRun: {
           verdictLabel: result.execution?.verdictLabel || result.submission.status,

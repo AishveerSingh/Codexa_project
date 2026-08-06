@@ -11,7 +11,10 @@ export default function ThemeToggle({ inline = false }) {
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/faculty");
 
-  if (!inline && isPlatformRoute) {
+  const isHomePage = location.pathname === "/";
+  const isLoginPage = location.pathname === "/login";
+
+  if (!inline && (isPlatformRoute || isHomePage || isLoginPage)) {
     return null;
   }
 

@@ -78,18 +78,18 @@ export async function createSubmission(req, res, next) {
       });
     }
 
-    const studentResult = await client.query(
+    const userResult = await client.query(
       `
-        SELECT id
+        SELECT id, role
         FROM users
-        WHERE id = $1 AND role = 'student'
+        WHERE id = $1
       `,
       [studentId]
     );
 
-    if (studentResult.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({
-        message: "Student not found."
+        message: "User not found."
       });
     }
 
@@ -164,12 +164,14 @@ export async function createSubmission(req, res, next) {
       ]
     );
 
-    await updateStudentProgress(client, {
-      studentId,
-      problemId,
-      status,
-      submittedAt: result.rows[0].submitted_at
-    });
+    if (userResult.rows[0].role === "student") {
+      await updateStudentProgress(client, {
+        studentId,
+        problemId,
+        status,
+        submittedAt: result.rows[0].submitted_at
+      });
+    }
 
     await client.query("COMMIT");
 
@@ -218,29 +220,32 @@ export async function runSubmission(req, res, next) {
       });
     }
 
-    const sampleTestCaseResult = await pool.query(
-      `
-        SELECT id, input_data, expected_output, is_sample, sort_order
-        FROM test_cases
-        WHERE problem_id = $1
-          AND is_sample = TRUE
-        ORDER BY sort_order ASC, created_at ASC
-      `,
-      [problemId]
-    );
+    let testCasesToRun = sampleTestCaseResult.rows;
 
-    const testCasesToRun =
-      sampleTestCaseResult.rows.length > 0
-        ? sampleTestCaseResult.rows
-        : [
-            {
-              id: "no-sample-case",
-              input_data: "",
-              expected_output: "",
-              is_sample: true,
-              sort_order: 0
-            }
-          ];
+    if (testCasesToRun.length === 0) {
+      const allTestCaseResult = await pool.query(
+        `
+          SELECT id, input_data, expected_output, is_sample, sort_order
+          FROM test_cases
+          WHERE problem_id = $1
+          ORDER BY sort_order ASC, created_at ASC
+        `,
+        [problemId]
+      );
+      testCasesToRun = allTestCaseResult.rows;
+    }
+
+    if (testCasesToRun.length === 0) {
+      testCasesToRun = [
+        {
+          id: "no-sample-case",
+          input_data: "",
+          expected_output: "",
+          is_sample: true,
+          sort_order: 0
+        }
+      ];
+    }
 
     const normalizedLanguage = language.trim().toLowerCase();
     const executionResult = await executeSubmission({
@@ -430,17 +435,69 @@ export async function getStudentProgress(req, res, next) {
     const result = await pool.query(
       `
         SELECT
-          p.difficulty,
-          COALESCE(SUM(sp.total_submissions), 0)::int AS total_submissions,
-          COALESCE(SUM(sp.accepted_submissions), 0)::int AS accepted_submissions,
-          COALESCE(SUM(sp.wrong_answer_submissions), 0)::int AS wrong_answer_submissions,
-          COALESCE(SUM(sp.time_limit_submissions), 0)::int AS time_limit_submissions,
-          COUNT(sp.id) FILTER (WHERE sp.solved_at IS NOT NULL)::int AS solved_problems
-        FROM problems p
-        LEFT JOIN student_progress sp
-          ON sp.problem_id = p.id
-         AND sp.student_id = $1
-        GROUP BY p.difficulty
+          d.difficulty,
+          (
+            SELECT COUNT(DISTINCT p_all.id)::int
+            FROM (
+              SELECT id, LOWER(TRIM(difficulty)) AS difficulty FROM problems
+              UNION ALL
+              SELECT id, LOWER(TRIM(difficulty)) AS difficulty FROM course_coding_problems
+            ) p_all
+            WHERE p_all.difficulty = d.difficulty
+          ) AS total_problems,
+          (
+            SELECT COUNT(*)::int
+            FROM (
+              SELECT s.id
+              FROM submissions s
+              JOIN problems p ON p.id = s.problem_id
+              WHERE s.student_id::text = $1::text AND LOWER(TRIM(p.difficulty)) = d.difficulty
+
+              UNION ALL
+
+              SELECT cps.id
+              FROM course_problem_submissions cps
+              JOIN course_coding_problems ccp ON ccp.id = cps.course_problem_id
+              WHERE cps.student_id::text = $1::text AND LOWER(TRIM(ccp.difficulty)) = d.difficulty
+            ) subs
+          ) AS total_submissions,
+          (
+            SELECT COUNT(*)::int
+            FROM (
+              SELECT s.id
+              FROM submissions s
+              JOIN problems p ON p.id = s.problem_id
+              WHERE s.student_id::text = $1::text AND LOWER(TRIM(s.status)) = 'accepted' AND LOWER(TRIM(p.difficulty)) = d.difficulty
+
+              UNION ALL
+
+              SELECT cps.id
+              FROM course_problem_submissions cps
+              JOIN course_coding_problems ccp ON ccp.id = cps.course_problem_id
+              WHERE cps.student_id::text = $1::text AND LOWER(TRIM(cps.status)) = 'accepted' AND LOWER(TRIM(ccp.difficulty)) = d.difficulty
+            ) accepted_subs
+          ) AS accepted_submissions,
+          (
+            SELECT COUNT(DISTINCT prob_id)::int
+            FROM (
+              SELECT s.problem_id AS prob_id
+              FROM submissions s
+              JOIN problems p ON p.id = s.problem_id
+              WHERE s.student_id::text = $1::text AND LOWER(TRIM(s.status)) = 'accepted' AND LOWER(TRIM(p.difficulty)) = d.difficulty
+
+              UNION
+
+              SELECT cps.course_problem_id AS prob_id
+              FROM course_problem_submissions cps
+              JOIN course_coding_problems ccp ON ccp.id = cps.course_problem_id
+              WHERE cps.student_id::text = $1::text AND LOWER(TRIM(cps.status)) = 'accepted' AND LOWER(TRIM(ccp.difficulty)) = d.difficulty
+            ) solved_probs
+          ) AS solved_problems
+        FROM (
+          SELECT 'easy' AS difficulty
+          UNION ALL SELECT 'medium'
+          UNION ALL SELECT 'hard'
+        ) d
       `,
       [studentId]
     );
@@ -448,6 +505,7 @@ export async function getStudentProgress(req, res, next) {
     const progressMap = {
       easy: {
         difficulty: "easy",
+        total_problems: 0,
         total_submissions: 0,
         accepted_submissions: 0,
         wrong_answer_submissions: 0,
@@ -456,6 +514,7 @@ export async function getStudentProgress(req, res, next) {
       },
       medium: {
         difficulty: "medium",
+        total_problems: 0,
         total_submissions: 0,
         accepted_submissions: 0,
         wrong_answer_submissions: 0,
@@ -464,6 +523,7 @@ export async function getStudentProgress(req, res, next) {
       },
       hard: {
         difficulty: "hard",
+        total_problems: 0,
         total_submissions: 0,
         accepted_submissions: 0,
         wrong_answer_submissions: 0,
@@ -473,8 +533,15 @@ export async function getStudentProgress(req, res, next) {
     };
 
     for (const row of result.rows) {
-      if (progressMap[row.difficulty]) {
-        progressMap[row.difficulty] = row;
+      const diff = (row.difficulty || "").toLowerCase();
+      if (progressMap[diff]) {
+        progressMap[diff] = {
+          ...progressMap[diff],
+          total_problems: Number(row.total_problems || 0),
+          total_submissions: Number(row.total_submissions || 0),
+          accepted_submissions: Number(row.accepted_submissions || 0),
+          solved_problems: Number(row.solved_problems || 0)
+        };
       }
     }
 

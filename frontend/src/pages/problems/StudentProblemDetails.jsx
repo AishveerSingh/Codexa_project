@@ -1214,16 +1214,20 @@ export default function StudentProblemDetails() {
       }
 
       setSubmissionHistory((currentHistory) => [data.submission, ...currentHistory]);
+      const isAccepted = data.submission?.status === "accepted";
+      const successMsg = isAccepted
+        ? "All test cases passed! (Including all hidden test cases)"
+        : "Latest result: success.";
       setSubmissionMessage(
-        formatExecutionMessage(data.execution, "Latest result: success.")
+        formatExecutionMessage(data.execution, successMsg)
       );
       setLatestExecutionDetails(data.submission.compiler_output || "");
       setLatestSubmitResults(data.testCaseResults || []);
       setLatestSubmitExecution(data.execution || null);
       setShowSubmissionDetails(true);
 
-      if (data.submission?.status === "accepted") {
-        showToast("success", "Accepted", "Submission passed hidden test cases.");
+      if (isAccepted) {
+        showToast("success", "Accepted", "All test cases passed (including all hidden test cases)!");
         handleTimerPause();
       } else {
         showToast(

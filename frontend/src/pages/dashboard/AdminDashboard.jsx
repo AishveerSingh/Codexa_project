@@ -6,7 +6,7 @@ import { PlatformLayout } from "../../components/PlatformLayout";
 import { getAdminSession, getAuthHeaders, saveAdminSession } from "../../utils/session";
 import { apiRequest } from "../../utils/api";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 
 function timeAgo(dateString) {
   const date = new Date(dateString);

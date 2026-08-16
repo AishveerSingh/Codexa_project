@@ -9,7 +9,7 @@ import "prismjs/components/prism-java";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-javascript";
 import "prismjs/themes/prism-tomorrow.css";
-const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 const initialEditor = {
   language: "python",
   sourceCode: ""

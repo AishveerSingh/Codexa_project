@@ -4,7 +4,7 @@ import { PlatformLayout, PlatformSection } from "../../components/PlatformLayout
 import { getAdminSession, getAuthHeaders } from "../../utils/session";
 import { apiRequest } from "../../utils/api";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 
 const initialStudentForm = {
   fullName: "",

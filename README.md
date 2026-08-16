@@ -47,8 +47,8 @@ npm run dev
 ## Default URLs
 
 - Frontend: `http://localhost:5173`
-- Backend: `http://localhost:5000`
-- Health API: `http://localhost:5000/api/health`
+- Backend: `https://codexa-project.onrender.com`
+- Health API: `https://codexa-project.onrender.com/api/health`
 
 ## Suggested Next Features
 

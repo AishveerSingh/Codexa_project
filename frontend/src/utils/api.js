@@ -1,6 +1,6 @@
 import { getAuthHeaders } from "./session";
 
-export const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
+export const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 
 function normalizeRequestError(error, fallbackMessage = "Request failed.") {
   const rawMessage = String(error?.message || fallbackMessage);

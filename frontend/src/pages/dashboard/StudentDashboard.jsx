@@ -4,7 +4,7 @@ import { PlatformLayout, PlatformSection, PlatformStats } from "../../components
 import SubmissionHeatmap from "../../components/SubmissionHeatmap";
 import { getAuthHeaders, getStudentSession } from "../../utils/session";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 const defaultProgress = [
   {
     difficulty: "easy",

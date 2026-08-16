@@ -4,7 +4,7 @@ import { PlatformLayout, PlatformSection, PlatformStats } from "../../components
 import { clearAdminSession, getAdminSession, getAuthHeaders } from "../../utils/session";
 
 // const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 const initialFacultyForm = {
   fullName: "",
   email: "",

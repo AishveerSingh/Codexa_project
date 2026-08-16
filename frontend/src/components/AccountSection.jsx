@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PlatformSection, PlatformStats } from "./PlatformLayout";
 import { getAuthHeaders } from "../utils/session";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 
 export default function AccountSection({ role, session, saveSession }) {
   const user = session?.user;

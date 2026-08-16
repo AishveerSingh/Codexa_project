@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { PlatformLayout, PlatformSection, PlatformStats } from "../../components/PlatformLayout";
 import { clearAdminSession, getAdminSession, getAuthHeaders } from "../../utils/session";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codingplatform-qf38.onrender.com/api";
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 
 export default function AdminStudentSubmissions() {
   const { studentId } = useParams();

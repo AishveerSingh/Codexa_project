@@ -10,7 +10,7 @@ dotenv.config({
 });
 
 function parseClientUrls(value) {
-  const urls = (value || "http://localhost:5173")
+  const urls = (value || "http://localhost:5173,https://codexa-project.onrender.com")
     .split(",")
     .map((entry) => entry.trim().replace(/\/$/, ""))
     .filter(Boolean);

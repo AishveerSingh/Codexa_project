@@ -20,7 +20,7 @@ export default function SubmissionHeatmap({ studentId, session }) {
       }
 
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "https://codexa-project.onrender.com/api";
         const res = await fetch(`${apiBaseUrl}/submissions/student/${targetStudentId}`, {
           headers: getAuthHeaders(token)
         });

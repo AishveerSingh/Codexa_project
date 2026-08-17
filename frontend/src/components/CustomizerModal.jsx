@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useTheme, ACCENT_PRESETS } from "./ThemeProvider";
+import { useTheme } from "./ThemeProvider";
+import { ACCENT_PRESETS } from "./accentPresets";
 
 export default function CustomizerModal({ isOpen, onClose }) {
   const { theme, toggleTheme, accentColor, setAccentColor } = useTheme();

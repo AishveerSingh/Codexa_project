@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { PlatformSection, PlatformStats } from "./PlatformLayout";
 import { getAuthHeaders } from "../utils/session";
-import { useTheme, ACCENT_PRESETS } from "./ThemeProvider";
+import { useTheme } from "./ThemeProvider";
+import { ACCENT_PRESETS } from "./accentPresets";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 

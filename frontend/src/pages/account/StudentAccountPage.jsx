@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 import { PlatformLayout } from "../../components/PlatformLayout";
 import SubmissionHeatmap from "../../components/SubmissionHeatmap";
-import { useTheme, ACCENT_PRESETS } from "../../components/ThemeProvider";
+import { useTheme } from "../../components/ThemeProvider";
+import { ACCENT_PRESETS } from "../../components/accentPresets";
 import { getStudentSession, getAuthHeaders } from "../../utils/session";
 import { apiBaseUrl } from "../../utils/api";
 

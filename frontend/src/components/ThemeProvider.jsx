@@ -1,17 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getStudentSession, getFacultySession, getAdminSession } from "../utils/session";
+import { ACCENT_PRESETS } from "./accentPresets";
 
 const ThemeContext = createContext(null);
-
-export const ACCENT_PRESETS = [
-  { id: "orange", name: "LeetCode Orange", color: "#ff7e29" },
-  { id: "emerald", name: "Emerald Green", color: "#10b981" },
-  { id: "sapphire", name: "Sapphire Blue", color: "#3b82f6" },
-  { id: "crimson", name: "Crimson Red", color: "#ef4444" },
-  { id: "purple", name: "Deep Purple", color: "#8b5cf6" },
-  { id: "amber", name: "Amber Gold", color: "#f59e0b" }
-];
 
 function getActiveRoleKey(pathname) {
   if (pathname.startsWith("/admin")) {

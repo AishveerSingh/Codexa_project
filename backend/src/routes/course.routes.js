@@ -14,7 +14,9 @@ import {
 } from "../controllers/course.controller.js";
 import {
   createAssignment,
-  listAssignmentsForCourse
+  listAssignmentsForCourse,
+  updateAssignment,
+  deleteAssignment
 } from "../controllers/assignment.controller.js";
 import {
   attachRoleProfile,
@@ -39,6 +41,8 @@ courseRouter.delete("/:courseId", requireRole("admin"), deleteCourse);
 courseRouter.get("/:courseId/students", requireCourseManagementAccess, getCourseStudents);
 courseRouter.get("/:courseId/assignments", requireCourseAccess, validateStudentCourseAccess, listAssignmentsForCourse);
 courseRouter.post("/:courseId/assignments", requireCourseManagementAccess, createAssignment);
+courseRouter.put("/:courseId/assignments/:assignmentId", requireCourseManagementAccess, updateAssignment);
+courseRouter.delete("/:courseId/assignments/:assignmentId", requireCourseManagementAccess, deleteAssignment);
 courseRouter.post("/:courseId/materials", requireCourseManagementAccess, addCourseMaterial);
 courseRouter.post("/:courseId/coding-problems", requireCourseManagementAccess, addCourseCodingProblem);
 courseRouter.post("/:courseId/coding-problems/:problemId/run", requireCourseAccess, validateStudentCourseAccess, runCourseCodingProblem);

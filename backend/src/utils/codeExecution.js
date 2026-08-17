@@ -140,10 +140,25 @@ if __name__ == "__main__":
         res = sol.lengthOfLongestSubstring(s) if hasattr(sol, 'lengthOfLongestSubstring') else sol.solve(s)
         print(res)
     else:
-        # Fallback to solve method with input data
-        method = next((m for m in ['solve', 'run'] if hasattr(sol, m)), None)
-        if method:
-            print(getattr(sol, method)(input_data))
+        method_name = next((m for m in ['solve', 'sum', 'solution', 'add', 'missingNumber', 'isValid', 'twoSum', 'factorial', 'fib', 'isPalindrome'] if hasattr(sol, m)), None)
+        if method_name:
+            fn = getattr(sol, method_name)
+            import inspect
+            sig = inspect.signature(fn)
+            param_count = len(sig.parameters)
+            if param_count == 0:
+                res = fn()
+                print("YES" if res is True else "NO" if res is False else res)
+            elif param_count == 1:
+                arg = int(lines[0]) if lines and lines[0].lstrip('-').isdigit() else input_data.strip()
+                res = fn(arg)
+                print("YES" if res is True else "NO" if res is False else res)
+            else:
+                args = []
+                for t in lines[:param_count]:
+                    args.append(int(t) if t.lstrip('-').isdigit() else t)
+                res = fn(*args)
+                print("YES" if res is True else "NO" if res is False else res)
 `;
     return sourceCode + "\n" + pyWrapper;
   }
@@ -220,6 +235,17 @@ int main() {
         } else {
             cout << sol.lengthOfLongestSubstring("") << endl;
         }
+    } else {
+        int a, b;
+        if (cin >> a >> b) {
+            cout << sol.solve(a, b) << endl;
+        } else {
+            cin.clear();
+            int n;
+            if (cin >> n) {
+                cout << sol.solve(n) << endl;
+            }
+        }
     }
     return 0;
 }
@@ -291,6 +317,18 @@ public class Main {
         } else if (title.equals("Longest Substring Without Repeating Characters")) {
             String s = sc.hasNext() ? sc.next() : "";
             System.out.println(sol.lengthOfLongestSubstring(s));
+        } else {
+            if (sc.hasNextInt()) {
+                int a = sc.nextInt();
+                if (sc.hasNextInt()) {
+                    int b = sc.nextInt();
+                    System.out.println(sol.solve(a, b));
+                } else {
+                    System.out.println(sol.solve(a));
+                }
+            } else if (sc.hasNext()) {
+                System.out.println(sol.solve(sc.next()));
+            }
         }
     }
 }
@@ -347,6 +385,21 @@ if (title === "Sum of Two Numbers") {
     }
 } else if (title === "Longest Substring Without Repeating Characters") {
     console.log(sol.lengthOfLongestSubstring(input));
+} else {
+    const fn = sol.solve || sol.sum || sol.solution;
+    if (typeof fn === 'function') {
+        const tokens = lines.filter(Boolean);
+        if (fn.length === 0) {
+            console.log(fn.call(sol));
+        } else if (fn.length === 1) {
+            const arg = tokens.length === 1 && !isNaN(tokens[0]) ? Number(tokens[0]) : input;
+            const res = fn.call(sol, arg);
+            console.log(res === true ? "YES" : res === false ? "NO" : res);
+        } else {
+            const args = tokens.slice(0, fn.length).map(x => !isNaN(x) ? Number(x) : x);
+            console.log(fn.apply(sol, args));
+        }
+    }
 }
 `;
     return sourceCode + "\n" + jsWrapper;
@@ -528,18 +581,26 @@ export async function executeSubmission({ language, sourceCode, testCases, probl
     const stderr = decodeBase64(subResult.stderr || subResult.message);
     const compileOutput = decodeBase64(subResult.compile_output);
 
+    const fullErrLog = (stderr + " " + compileOutput + " " + (subResult.status?.description || "")).toLowerCase();
+    const isSyntaxOrCompileErr =
+      statusId === 6 ||
+      fullErrLog.includes("syntaxerror") ||
+      fullErrLog.includes("indentationerror") ||
+      fullErrLog.includes("compilation error") ||
+      fullErrLog.includes("compile error");
+
     let passed = false;
     let testCaseErrorType = null;
 
     if (statusId === 3) {
       passed = true;
       passedTestCases++;
+    } else if (isSyntaxOrCompileErr) {
+      testCaseErrorType = "compile_error";
     } else if (statusId === 4) {
       testCaseErrorType = "wrong_answer";
     } else if (statusId === 5) {
       testCaseErrorType = "time_limit";
-    } else if (statusId === 6) {
-      testCaseErrorType = "compile_error";
     } else {
       testCaseErrorType = "runtime_error";
     }

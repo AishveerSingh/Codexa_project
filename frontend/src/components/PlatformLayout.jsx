@@ -16,7 +16,8 @@ const studentNavCategories = [
     items: [
       { to: "/student/dashboard", label: "Dashboard", icon: "dashboard" },
       { to: "/student/courses", label: "Courses", icon: "courses" },
-      { to: "/student/problems", label: "Practice", icon: "problems" }
+      { to: "/student/problems", label: "Practice", icon: "problems" },
+      { to: "/student/exams", label: "Tests & MST", icon: "exam" }
     ]
   },
   {
@@ -34,8 +35,9 @@ const facultyNavCategories = [
       { to: "/faculty/dashboard", label: "Dashboard", icon: "dashboard" },
       { to: "/faculty/courses", label: "Courses", icon: "courses" },
       { to: "/faculty/students", label: "Students", icon: "users" },
+      { to: "/faculty/exams", label: "Tests & MST", icon: "exam" },
       { to: "/faculty/dashboard?tab=analytics", label: "Analytics", icon: "analytics" },
-      { to: "/faculty/problems", label: "Practice", icon: "problems" }
+      { to: "/faculty/dashboard?tab=practice", label: "Practice", icon: "problems" }
     ]
   },
   {
@@ -53,7 +55,8 @@ const adminNavCategories = [
       { to: "/admin/dashboard", label: "Dashboard", icon: "dashboard" },
       { to: "/admin/students", label: "Manage Users", icon: "users" },
       { to: "/admin/courses", label: "Courses", icon: "courses" },
-      { to: "/admin/problems", label: "Problem Bank", icon: "problems" }
+      { to: "/admin/problems", label: "Problem Bank", icon: "problems" },
+      { to: "/admin/exams", label: "Tests & MST", icon: "exam" }
     ]
   },
   {
@@ -113,6 +116,16 @@ function getSidebarIcon(icon) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="16 6 22 12 16 18" />
           <polyline points="8 18 2 12 8 6" />
+        </svg>
+      );
+    case "exam":
+    case "test":
+    case "mst":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <path d="M9 15l2 2 4-4" />
         </svg>
       );
     case "add-user":

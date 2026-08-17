@@ -8,6 +8,11 @@ export const pool = new Pool({
   ssl: env.pgSsl ? { rejectUnauthorized: false } : false
 });
 
+// Prevent backend server crash on idle Neon connection drops
+pool.on("error", (err, client) => {
+  console.error("Idle database pool connection notice:", err.message);
+});
+
 export async function checkDatabaseConnection() {
   const client = await pool.connect();
 

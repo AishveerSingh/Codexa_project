@@ -28,6 +28,9 @@ import StudentCourseProblemDetails from "../pages/courses/StudentCourseProblemDe
 import StudentCourseList from "../pages/courses/StudentCourseList";
 import StudentProblemList from "../pages/problems/StudentProblemList";
 import StudentProblemDetails from "../pages/problems/StudentProblemDetails";
+import StudentExamsPage from "../pages/exams/StudentExamsPage";
+import FacultyExamsPage from "../pages/exams/FacultyExamsPage";
+import AdminExamsPage from "../pages/exams/AdminExamsPage";
 import { getStudentSession, getFacultySession, getAdminSession } from "../utils/session";
 
 function ProtectedRoute({ role }) {
@@ -65,6 +68,7 @@ export default function MainRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/student/login" element={<Navigate to="/login" replace />} />
       <Route path="/studentLogin" element={<Navigate to="/login" replace />} />
+      {/* Student Routes */}
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/courses" element={<StudentCourseList />} />
       <Route path="/student/courses/:courseId" element={<StudentCourseDetails />} />
@@ -73,6 +77,7 @@ export default function MainRoutes() {
       <Route path="/student/problems" element={<StudentProblemList />} />
       <Route path="/student/problems/:problemId" element={<StudentProblemDetails />} />
       <Route path="/student/problems/:problemId/solve" element={<StudentProblemDetails />} />
+      <Route path="/student/exams" element={<StudentExamsPage />} />
       <Route path="/studentDashboard" element={<StudentDashboard />} />
       <Route path="/faculty/login" element={<Navigate to="/login" replace />} />
       <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
@@ -81,8 +86,9 @@ export default function MainRoutes() {
       <Route path="/faculty/courses/:courseId/problems/:problemId" element={<FacultyCourseProblemDetails />} />
       <Route path="/faculty/students" element={<FacultyStudentList />} />
       <Route path="/faculty/students/:studentId/submissions" element={<FacultyStudentSubmissions />} />
-      <Route path="/faculty/problems" element={<StudentProblemList />} />
+      <Route path="/faculty/problems" element={<Navigate to="/faculty/dashboard?tab=practice" replace />} />
       <Route path="/faculty/problems/:problemId/solve" element={<StudentProblemDetails />} />
+      <Route path="/faculty/exams" element={<FacultyExamsPage />} />
       <Route path="/faculty/account" element={<FacultyAccountPage />} />
       <Route path="/admin/login" element={<Navigate to="/login" replace />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -90,6 +96,7 @@ export default function MainRoutes() {
       <Route path="/admin/courses/:courseId" element={<AdminCourseDetails />} />
       <Route path="/admin/courses/:courseId/problems/:problemId" element={<AdminCourseProblemDetails />} />
       <Route path="/admin/account" element={<AdminAccountPage />} />
+      <Route path="/admin/exams" element={<AdminExamsPage />} />
       <Route path="/admin/problems/new" element={<AdminProblemCreate />} />
       <Route path="/admin/problems" element={<AdminProblemList />} />
       <Route path="/admin/problems/:problemId" element={<AdminProblemDetails />} />

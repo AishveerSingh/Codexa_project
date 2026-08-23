@@ -28,6 +28,9 @@ import StudentCourseProblemDetails from "../pages/courses/StudentCourseProblemDe
 import StudentCourseList from "../pages/courses/StudentCourseList";
 import StudentProblemList from "../pages/problems/StudentProblemList";
 import StudentProblemDetails from "../pages/problems/StudentProblemDetails";
+import CreateAssignmentPage from "../pages/courses/CreateAssignmentPage";
+import AssignmentAttemptPage from "../pages/courses/AssignmentAttemptPage";
+import AssignmentRecordsPage from "../pages/courses/AssignmentRecordsPage";
 import { getStudentSession, getFacultySession, getAdminSession } from "../utils/session";
 
 function ProtectedRoute({ role }) {
@@ -101,6 +104,11 @@ export default function MainRoutes() {
       <Route path="/admin/admins" element={<AdminAdminList />} />
       <Route path="/admin/faculty" element={<AdminFacultyList />} />
       <Route path="/admin/students/:studentId/submissions" element={<AdminStudentSubmissions />} />
+      <Route path="/admin/courses/:courseId/assignments/new" element={<CreateAssignmentPage role="admin" />} />
+      <Route path="/faculty/courses/:courseId/assignments/new" element={<CreateAssignmentPage role="faculty" />} />
+      <Route path="/admin/courses/:courseId/assignments/:assignmentId/records" element={<AssignmentRecordsPage role="admin" />} />
+      <Route path="/faculty/courses/:courseId/assignments/:assignmentId/records" element={<AssignmentRecordsPage role="faculty" />} />
+      <Route path="/student/courses/:courseId/assignments/:assignmentId/attempt" element={<AssignmentAttemptPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

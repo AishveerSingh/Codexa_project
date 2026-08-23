@@ -503,6 +503,9 @@ export default function CourseWorkspace({ role, session }) {
                     <strong>{assignment.title}</strong>
                     <p>{assignment.description || "No assignment description provided."}</p>
                     <p className="question-meta">Due {formatDateTime(assignment.dueDate)}</p>
+                    <Link className={`auth-button ${accentButtonClass} detail-link`} style={{ marginTop: "1rem", display: "inline-block" }} to={`/${accentRole}/courses/${courseId}/assignments/${assignment.id}/records`}>
+                      View Student Submissions
+                    </Link>
                   </article>
                 ))}
               </div>
@@ -575,42 +578,12 @@ export default function CourseWorkspace({ role, session }) {
           ) : null}
 
           <PlatformSection label="Publish Assignment" title="Create a new assignment">
-            <form className="auth-form course-form-grid" onSubmit={handleCreateAssignment}>
-              <input
-                placeholder="Assignment title"
-                value={assignmentForm.title}
-                onChange={(event) => setAssignmentForm((current) => ({ ...current, title: event.target.value }))}
-                required
-              />
-              <select
-                value={assignmentForm.type}
-                onChange={(event) => setAssignmentForm((current) => ({ ...current, type: event.target.value }))}
-              >
-                <option value="coding">Coding</option>
-                <option value="theory">Theory</option>
-              </select>
-              <input
-                type="datetime-local"
-                value={assignmentForm.dueDate}
-                onChange={(event) => setAssignmentForm((current) => ({ ...current, dueDate: event.target.value }))}
-              />
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={assignmentForm.maxScore}
-                onChange={(event) => setAssignmentForm((current) => ({ ...current, maxScore: event.target.value }))}
-              />
-              <textarea
-                rows="4"
-                placeholder="Assignment description"
-                value={assignmentForm.description}
-                onChange={(event) => setAssignmentForm((current) => ({ ...current, description: event.target.value }))}
-              />
-              <button className={`auth-button ${accentButtonClass}`} type="submit">
-                Create assignment
-              </button>
-            </form>
+            <div style={{ padding: "1rem 0" }}>
+              <p style={{ marginBottom: "1rem" }}>Assignments can now include multiple-choice questions and coding problems. Use the builder to construct your assignment.</p>
+              <Link to={`/${accentRole}/courses/${courseId}/assignments/new`} className={`auth-button ${accentButtonClass}`} style={{ display: "inline-block" }}>
+                Open Assignment Builder
+              </Link>
+            </div>
           </PlatformSection>
 
           <PlatformSection label="Study Material" title="Upload notes or references">

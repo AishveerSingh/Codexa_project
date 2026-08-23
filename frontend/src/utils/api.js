@@ -10,7 +10,7 @@ function normalizeRequestError(error, fallbackMessage = "Request failed.") {
     return "Database or backend connection was refused. Make sure the backend server and PostgreSQL are running.";
   }
 
-  if (rawMessage === "Failed to fetch") {
+  if (rawMessage === "Failed to fetch" || uppercaseMessage.includes("NETWORKERROR")) {
     const cleanBaseUrl = apiBaseUrl.replace(/\/api$/, "");
     return `Backend is unreachable. Make sure the API server is running on ${cleanBaseUrl}.`;
   }

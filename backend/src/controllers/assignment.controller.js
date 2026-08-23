@@ -2,46 +2,176 @@ import { pool } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const createAssignment = asyncHandler(async (req, res) => {
-  const { title, description, type, dueDate, maxScore } = req.body;
+  const { title, description, startDate, dueDate, timeLimitMinutes, maxScore, status, questions } = req.body;
 
   if (!title?.trim()) {
     return res.status(400).json({ message: "Assignment title is required." });
   }
 
-  const result = await pool.query(
-    `
-      INSERT INTO course_assignments (course_id, title, description, assignment_type, due_date, max_score, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, title, description, assignment_type, due_date, max_score
-    `,
-    [
-      req.course.id,
-      title.trim(),
-      description?.trim() || "",
-      type?.trim() || "coding",
-      dueDate || null,
-      Number(maxScore) || 100,
-      req.currentUser.id
-    ]
-  );
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-  res.status(201).json({
-    message: "Assignment created successfully.",
-    assignment: {
-      id: result.rows[0].id,
-      title: result.rows[0].title,
-      description: result.rows[0].description,
-      type: result.rows[0].assignment_type,
-      dueDate: result.rows[0].due_date,
-      maxScore: result.rows[0].max_score
+    // 1. Create Assignment
+    const assignmentResult = await client.query(
+      `
+        INSERT INTO course_assignments (course_id, title, description, start_date, due_date, time_limit_minutes, max_score, status, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id
+      `,
+      [
+        req.course.id,
+        title.trim(),
+        description?.trim() || "",
+        startDate || null,
+        dueDate || null,
+        timeLimitMinutes || null,
+        Number(maxScore) || 100,
+        status || 'published',
+        req.currentUser.id
+      ]
+    );
+
+    const assignmentId = assignmentResult.rows[0].id;
+
+    // 2. Add Questions
+    if (questions && Array.isArray(questions)) {
+      let sortOrder = 0;
+      for (const q of questions) {
+        let mcqId = null;
+        let codingProblemId = q.course_coding_problem_id || null;
+
+        if (q.type === 'mcq') {
+          const mcqResult = await client.query(
+            `
+              INSERT INTO mcq_questions (course_id, question_text, options, correct_option_index, marks, negative_marks)
+              VALUES ($1, $2, $3, $4, $5, $6)
+              RETURNING id
+            `,
+            [
+              req.course.id,
+              q.questionText,
+              JSON.stringify(q.options),
+              q.correctOptionIndex,
+              q.marks || 1,
+              q.negativeMarks || 0
+            ]
+          );
+          mcqId = mcqResult.rows[0].id;
+        } else if (q.type === 'coding' && !codingProblemId) {
+            // Create coding problem if not linked
+            const codingResult = await client.query(
+                `
+                    INSERT INTO course_coding_problems (course_id, title, statement, input_format, output_format, constraints_text, examples_text, difficulty, created_by)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    RETURNING id
+                `,
+                [
+                    req.course.id,
+                    q.title || "Coding Question",
+                    q.statement || "",
+                    q.inputFormat || "",
+                    q.outputFormat || "",
+                    q.constraintsText || "",
+                    q.examplesText || "",
+                    q.difficulty || 'medium',
+                    req.currentUser.id
+                ]
+            );
+            codingProblemId = codingResult.rows[0].id;
+        }
+
+        await client.query(
+          `
+            INSERT INTO assignment_questions (assignment_id, question_type, mcq_id, course_coding_problem_id, sort_order, marks)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+          [
+            assignmentId,
+            q.type,
+            mcqId,
+            codingProblemId,
+            sortOrder++,
+            q.marks || 1
+          ]
+        );
+      }
     }
-  });
+
+    await client.query("COMMIT");
+    res.status(201).json({ message: "Assignment created successfully.", assignmentId });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
+export const getAssignment = asyncHandler(async (req, res) => {
+    const assignmentResult = await pool.query(
+        `SELECT * FROM course_assignments WHERE id = $1`, [req.params.assignmentId]
+    );
+
+    if (assignmentResult.rows.length === 0) {
+        return res.status(404).json({ message: "Assignment not found." });
+    }
+
+    const assignment = assignmentResult.rows[0];
+
+    const questionsResult = await pool.query(
+        `
+        SELECT aq.id as assignment_question_id, aq.question_type, aq.marks, aq.sort_order,
+               m.id as mcq_id, m.question_text, m.options, m.correct_option_index, m.negative_marks,
+               c.id as coding_id, c.title, c.statement, c.input_format, c.output_format, c.constraints_text, c.examples_text, c.difficulty
+        FROM assignment_questions aq
+        LEFT JOIN mcq_questions m ON aq.mcq_id = m.id
+        LEFT JOIN course_coding_problems c ON aq.course_coding_problem_id = c.id
+        WHERE aq.assignment_id = $1
+        ORDER BY aq.sort_order ASC
+        `, [assignment.id]
+    );
+
+    const questions = questionsResult.rows.map(q => {
+        if (q.question_type === 'mcq') {
+            const mcq = {
+                id: q.assignment_question_id,
+                type: 'mcq',
+                marks: q.marks,
+                sortOrder: q.sort_order,
+                questionText: q.question_text,
+                options: q.options,
+                negativeMarks: q.negative_marks
+            };
+            if (req.currentUser.role !== 'student') {
+                mcq.correctOptionIndex = q.correct_option_index;
+            }
+            return mcq;
+        } else {
+            return {
+                id: q.assignment_question_id,
+                type: 'coding',
+                marks: q.marks,
+                sortOrder: q.sort_order,
+                codingProblemId: q.coding_id,
+                title: q.title,
+                statement: q.statement,
+                inputFormat: q.input_format,
+                outputFormat: q.output_format,
+                constraintsText: q.constraints_text,
+                examplesText: q.examples_text,
+                difficulty: q.difficulty
+            };
+        }
+    });
+
+    res.json({ ...assignment, questions });
 });
 
 export const listAssignmentsForCourse = asyncHandler(async (req, res) => {
   const assignmentResult = await pool.query(
     `
-      SELECT id, title, description, assignment_type, due_date, max_score, created_at
+      SELECT id, title, description, assignment_type, start_date, due_date, time_limit_minutes, max_score, status, created_at
       FROM course_assignments
       WHERE course_id = $1
       ORDER BY due_date ASC NULLS LAST, created_at DESC
@@ -49,123 +179,153 @@ export const listAssignmentsForCourse = asyncHandler(async (req, res) => {
     [req.course.id]
   );
 
-  const assignmentIds = assignmentResult.rows.map((row) => row.id);
-  const submissions =
-    assignmentIds.length > 0
-      ? await pool.query(
-          req.currentUser.role === "student"
-            ? `
-                SELECT id, assignment_id, submitted_at, grade, feedback, status
-                FROM course_assignment_submissions
-                WHERE student_id = $1 AND assignment_id = ANY($2::uuid[])
-              `
-            : `
-                SELECT s.id, s.assignment_id, s.submitted_at, s.grade, s.feedback, s.status, u.id AS student_id, u.full_name, u.email
-                FROM course_assignment_submissions s
-                JOIN users u ON u.id = s.student_id
-                WHERE s.assignment_id = ANY($1::uuid[])
-              `,
-          req.currentUser.role === "student"
-            ? [req.currentUser.id, assignmentIds]
-            : [assignmentIds]
-        )
-      : { rows: [] };
-
-  const groupedSubmissions = new Map();
-  submissions.rows.forEach((row) => {
-    const current = groupedSubmissions.get(row.assignment_id) || [];
-    current.push(
-      req.currentUser.role === "student"
-        ? {
-            id: row.id,
-            submittedAt: row.submitted_at,
-            grade: row.grade,
-            feedback: row.feedback,
-            status: row.status
-          }
-        : {
-            id: row.id,
-            student: {
-              id: row.student_id,
-              fullName: row.full_name,
-              email: row.email
-            },
-            submittedAt: row.submitted_at,
-            grade: row.grade,
-            feedback: row.feedback,
-            status: row.status
-          }
+  let attempts = { rows: [] };
+  if (req.currentUser.role === 'student') {
+    attempts = await pool.query(
+        `SELECT assignment_id, status, total_score FROM assignment_student_attempts WHERE student_id = $1`,
+        [req.currentUser.id]
     );
-    groupedSubmissions.set(row.assignment_id, current);
-  });
+  }
+
+  const attemptsMap = new Map();
+  attempts.rows.forEach(a => attemptsMap.set(a.assignment_id, a));
 
   res.json(
     assignmentResult.rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      description: row.description || "",
-      type: row.assignment_type,
-      dueDate: row.due_date,
-      maxScore: row.max_score,
-      submissions: groupedSubmissions.get(row.id) || []
+      ...row,
+      attempt: req.currentUser.role === 'student' ? attemptsMap.get(row.id) || null : undefined
     }))
   );
 });
 
-export const submitAssignment = asyncHandler(async (req, res) => {
-  const { sourceCode, answerText, attachmentUrl } = req.body;
-
-  const result = await pool.query(
-    `
-      INSERT INTO course_assignment_submissions (
-        assignment_id,
-        student_id,
-        source_code,
-        answer_text,
-        attachment_url,
-        status,
-        submitted_at,
-        updated_at
-      )
-      VALUES ($1, $2, $3, $4, $5, 'submitted', NOW(), NOW())
-      ON CONFLICT (assignment_id, student_id)
-      DO UPDATE SET
-        source_code = EXCLUDED.source_code,
-        answer_text = EXCLUDED.answer_text,
-        attachment_url = EXCLUDED.attachment_url,
-        status = 'submitted',
-        grade = NULL,
-        feedback = '',
-        submitted_at = NOW(),
-        updated_at = NOW()
-      RETURNING id
-    `,
-    [req.assignment.id, req.currentUser.id, sourceCode?.trim() || "", answerText?.trim() || "", attachmentUrl?.trim() || ""]
-  );
-
-  res.status(201).json({
-    message: "Assignment submitted successfully.",
-    submissionId: result.rows[0].id
-  });
+export const startAttempt = asyncHandler(async (req, res) => {
+    const result = await pool.query(
+        `
+        INSERT INTO assignment_student_attempts (assignment_id, student_id, status, started_at)
+        VALUES ($1, $2, 'in_progress', NOW())
+        ON CONFLICT (assignment_id, student_id) DO UPDATE SET updated_at = NOW()
+        RETURNING id, status, started_at
+        `,
+        [req.params.assignmentId, req.currentUser.id]
+    );
+    res.json(result.rows[0]);
 });
 
-export const gradeAssignmentSubmission = asyncHandler(async (req, res) => {
-  const result = await pool.query(
-    `
-      UPDATE course_assignment_submissions
-      SET grade = $1,
-          feedback = $2,
-          status = 'graded',
-          updated_at = NOW()
-      WHERE id = $3 AND assignment_id = $4
-      RETURNING id
-    `,
-    [Number(req.body.grade), req.body.feedback?.trim() || "", req.params.submissionId, req.assignment.id]
-  );
+export const saveProgress = asyncHandler(async (req, res) => {
+    const { attemptId, questionId, type, answer } = req.body;
 
-  if (result.rows.length === 0) {
-    return res.status(404).json({ message: "Submission not found." });
-  }
+    if (type === 'mcq') {
+        await pool.query(
+            `
+            INSERT INTO assignment_mcq_answers (attempt_id, assignment_question_id, selected_option_index)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (attempt_id, assignment_question_id) DO UPDATE SET selected_option_index = EXCLUDED.selected_option_index, updated_at = NOW()
+            `,
+            [attemptId, questionId, answer]
+        );
+    } else if (type === 'coding') {
+        await pool.query(
+            `
+            INSERT INTO assignment_coding_answers (attempt_id, assignment_question_id, language, source_code)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (attempt_id, assignment_question_id) DO UPDATE SET language = EXCLUDED.language, source_code = EXCLUDED.source_code, updated_at = NOW()
+            `,
+            [attemptId, questionId, answer.language, answer.code]
+        );
+    }
+    res.json({ message: "Progress saved." });
+});
 
-  res.json({ message: "Submission graded successfully." });
+export const submitAttempt = asyncHandler(async (req, res) => {
+    const { attemptId } = req.body;
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        // Fetch all MCQ answers for this attempt and grade them
+        const mcqs = await client.query(`
+            SELECT ama.id, ama.selected_option_index, mq.correct_option_index, aq.marks, mq.negative_marks
+            FROM assignment_mcq_answers ama
+            JOIN assignment_questions aq ON ama.assignment_question_id = aq.id
+            JOIN mcq_questions mq ON aq.mcq_id = mq.id
+            WHERE ama.attempt_id = $1
+        `, [attemptId]);
+
+        let totalMcqScore = 0;
+        for (const ans of mcqs.rows) {
+            const isCorrect = ans.selected_option_index === ans.correct_option_index;
+            const marksObtained = isCorrect ? ans.marks : (ans.selected_option_index !== null && ans.selected_option_index !== undefined ? -ans.negative_marks : 0);
+            totalMcqScore += Math.max(0, marksObtained);
+
+            await client.query(`
+                UPDATE assignment_mcq_answers
+                SET is_correct = $1, marks_obtained = $2, updated_at = NOW()
+                WHERE id = $3
+            `, [isCorrect, marksObtained, ans.id]);
+        }
+
+        // Coding questions grading usually happens asynchronously via judge.
+        // For simplicity, we just finalize attempt status and MCQ score for now.
+        const codings = await client.query(`
+             SELECT COALESCE(SUM(marks_obtained), 0) as coding_score FROM assignment_coding_answers WHERE attempt_id = $1
+        `, [attemptId]);
+
+        const totalScore = totalMcqScore + parseInt(codings.rows[0].coding_score || 0);
+
+        await client.query(`
+            UPDATE assignment_student_attempts
+            SET status = 'submitted', submitted_at = NOW(), total_score = $1, updated_at = NOW()
+            WHERE id = $2
+        `, [totalScore, attemptId]);
+
+        await client.query("COMMIT");
+        res.json({ message: "Attempt submitted successfully.", totalScore });
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+});
+
+export const getAssignmentRecords = asyncHandler(async (req, res) => {
+    const attempts = await pool.query(`
+        SELECT asa.id as attempt_id, asa.status, asa.started_at, asa.submitted_at, asa.total_score,
+               u.id as student_id, u.full_name, u.email
+        FROM assignment_student_attempts asa
+        JOIN users u ON u.id = asa.student_id
+        WHERE asa.assignment_id = $1
+        ORDER BY asa.submitted_at DESC NULLS LAST
+    `, [req.params.assignmentId]);
+
+    res.json(attempts.rows);
+});
+
+export const getAttemptDetails = asyncHandler(async (req, res) => {
+     const attemptId = req.params.attemptId;
+
+     const attemptInfo = await pool.query(`SELECT * FROM assignment_student_attempts WHERE id = $1`, [attemptId]);
+     if (attemptInfo.rows.length === 0) return res.status(404).json({message: "Not found"});
+
+     const mcqAnswers = await pool.query(`
+        SELECT ama.assignment_question_id, ama.selected_option_index, ama.is_correct, ama.marks_obtained,
+               mq.correct_option_index
+        FROM assignment_mcq_answers ama
+        JOIN assignment_questions aq ON ama.assignment_question_id = aq.id
+        JOIN mcq_questions mq ON aq.mcq_id = mq.id
+        WHERE ama.attempt_id = $1
+     `, [attemptId]);
+
+     const codingAnswers = await pool.query(`
+         SELECT aca.assignment_question_id, aca.language, aca.source_code, aca.execution_result, aca.passed_test_cases, aca.total_test_cases, aca.marks_obtained
+         FROM assignment_coding_answers aca
+         WHERE aca.attempt_id = $1
+     `, [attemptId]);
+
+     res.json({
+         attempt: attemptInfo.rows[0],
+         mcqAnswers: mcqAnswers.rows,
+         codingAnswers: codingAnswers.rows
+     });
 });

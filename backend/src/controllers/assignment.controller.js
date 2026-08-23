@@ -2,7 +2,7 @@ import { pool } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const createAssignment = asyncHandler(async (req, res) => {
-  const { title, description, startDate, dueDate, timeLimitMinutes, maxScore, status, questions } = req.body;
+const { title, description, startDate, dueDate, startTime, endTime, timeLimitMinutes, durationMinutes, maxScore, status, questions, type, isMst, isProctored } = req.body;
 
   if (!title?.trim()) {
     return res.status(400).json({ message: "Assignment title is required." });
@@ -15,26 +15,34 @@ export const createAssignment = asyncHandler(async (req, res) => {
     // 1. Create Assignment
     const assignmentResult = await client.query(
       `
-        INSERT INTO course_assignments (course_id, title, description, start_date, due_date, time_limit_minutes, max_score, status, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id
+        INSERT INTO course_assignments (
+          course_id, title, description, assignment_type, start_date, due_date, start_time, end_time, time_limit_minutes, duration_minutes, max_score, status, is_mst, is_proctored, created_by
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING id, title, description, assignment_type, start_date, due_date, start_time, end_time, time_limit_minutes, duration_minutes, max_score, status, is_mst, is_proctored
       `,
       [
         req.course.id,
         title.trim(),
         description?.trim() || "",
+        type?.trim() || "coding",
         startDate || null,
         dueDate || null,
+        startTime || null,
+        endTime || null,
         timeLimitMinutes || null,
+        Number(durationMinutes) || null,
         Number(maxScore) || 100,
         status || 'published',
+        Boolean(isMst),
+        isProctored !== undefined ? Boolean(isProctored) : true,
         req.currentUser.id
       ]
     );
 
     const assignmentId = assignmentResult.rows[0].id;
 
-    // 2. Add Questions
+    // 2. Add Questions (if provided)
     if (questions && Array.isArray(questions)) {
       let sortOrder = 0;
       for (const q of questions) {
@@ -59,26 +67,25 @@ export const createAssignment = asyncHandler(async (req, res) => {
           );
           mcqId = mcqResult.rows[0].id;
         } else if (q.type === 'coding' && !codingProblemId) {
-            // Create coding problem if not linked
-            const codingResult = await client.query(
-                `
-                    INSERT INTO course_coding_problems (course_id, title, statement, input_format, output_format, constraints_text, examples_text, difficulty, created_by)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                    RETURNING id
-                `,
-                [
-                    req.course.id,
-                    q.title || "Coding Question",
-                    q.statement || "",
-                    q.inputFormat || "",
-                    q.outputFormat || "",
-                    q.constraintsText || "",
-                    q.examplesText || "",
-                    q.difficulty || 'medium',
-                    req.currentUser.id
-                ]
-            );
-            codingProblemId = codingResult.rows[0].id;
+          const codingResult = await client.query(
+            `
+                INSERT INTO course_coding_problems (course_id, title, statement, input_format, output_format, constraints_text, examples_text, difficulty, created_by)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id
+            `,
+            [
+              req.course.id,
+              q.title || "Coding Question",
+              q.statement || "",
+              q.inputFormat || "",
+              q.outputFormat || "",
+              q.constraintsText || "",
+              q.examplesText || "",
+              q.difficulty || 'medium',
+              req.currentUser.id
+            ]
+          );
+          codingProblemId = codingResult.rows[0].id;
         }
 
         await client.query(
@@ -96,6 +103,8 @@ export const createAssignment = asyncHandler(async (req, res) => {
           ]
         );
       }
+    }
+
     }
 
     await client.query("COMMIT");
@@ -171,10 +180,10 @@ export const getAssignment = asyncHandler(async (req, res) => {
 export const listAssignmentsForCourse = asyncHandler(async (req, res) => {
   const assignmentResult = await pool.query(
     `
-      SELECT id, title, description, assignment_type, start_date, due_date, time_limit_minutes, max_score, status, created_at
+      SELECT id, title, description, assignment_type, start_date, due_date, start_time, end_time, time_limit_minutes, duration_minutes, max_score, status, is_mst, is_proctored, created_at
       FROM course_assignments
       WHERE course_id = $1
-      ORDER BY due_date ASC NULLS LAST, created_at DESC
+      ORDER BY start_time ASC NULLS LAST, due_date ASC NULLS LAST, created_at DESC
     `,
     [req.course.id]
   );
@@ -192,7 +201,21 @@ export const listAssignmentsForCourse = asyncHandler(async (req, res) => {
 
   res.json(
     assignmentResult.rows.map((row) => ({
-      ...row,
+      id: row.id,
+      title: row.title,
+      description: row.description || "",
+      type: row.assignment_type,
+      startDate: row.start_date,
+      dueDate: row.due_date,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      timeLimitMinutes: row.time_limit_minutes,
+      durationMinutes: row.duration_minutes,
+      maxScore: row.max_score,
+      status: row.status,
+      isMst: row.is_mst,
+      isProctored: row.is_proctored,
+      submissions: groupedSubmissions.get(row.id) || [],
       attempt: req.currentUser.role === 'student' ? attemptsMap.get(row.id) || null : undefined
     }))
   );
@@ -328,4 +351,76 @@ export const getAttemptDetails = asyncHandler(async (req, res) => {
          mcqAnswers: mcqAnswers.rows,
          codingAnswers: codingAnswers.rows
      });
+});
+
+export const updateAssignment = asyncHandler(async (req, res) => {
+  const { assignmentId } = req.params;
+  const { title, description, type, dueDate, startTime, endTime, durationMinutes, maxScore, isMst, isProctored } = req.body;
+
+  // Anti-tamper check: Students cannot edit assignments or scores
+  if (req.currentUser.role === "student") {
+    return res.status(403).json({ message: "Access denied. Students cannot modify examination papers or test scores." });
+  }
+
+  const result = await pool.query(
+    `
+      UPDATE course_assignments
+      SET title = COALESCE($1, title),
+          description = COALESCE($2, description),
+          assignment_type = COALESCE($3, assignment_type),
+          due_date = COALESCE($4, due_date),
+          start_time = COALESCE($5, start_time),
+          end_time = COALESCE($6, end_time),
+          duration_minutes = COALESCE($7, duration_minutes),
+          max_score = COALESCE($8, max_score),
+          is_mst = COALESCE($9, is_mst),
+          is_proctored = COALESCE($10, is_proctored),
+          updated_at = NOW()
+      WHERE id = $11 AND course_id = $12
+      RETURNING id, title, description, assignment_type, due_date, start_time, end_time, duration_minutes, max_score, is_mst, is_proctored
+    `,
+    [
+      title?.trim() || null,
+      description?.trim() || null,
+      type?.trim() || null,
+      dueDate || endTime || null,
+      startTime || null,
+      endTime || dueDate || null,
+      durationMinutes ? Number(durationMinutes) : null,
+      maxScore ? Number(maxScore) : null,
+      isMst !== undefined ? Boolean(isMst) : null,
+      isProctored !== undefined ? Boolean(isProctored) : null,
+      assignmentId,
+      req.course.id
+    ]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: "Examination paper not found." });
+  }
+
+  res.json({
+    message: "Examination parameters updated successfully.",
+    assignment: result.rows[0]
+  });
+});
+
+export const deleteAssignment = asyncHandler(async (req, res) => {
+  const { assignmentId } = req.params;
+
+  // Anti-tamper check: Students cannot delete assignments
+  if (req.currentUser.role === "student") {
+    return res.status(403).json({ message: "Access denied. Students cannot delete examination papers." });
+  }
+
+  const result = await pool.query(
+    `DELETE FROM course_assignments WHERE id = $1 AND course_id = $2 RETURNING id`,
+    [assignmentId, req.course.id]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: "Examination paper not found." });
+  }
+
+  res.json({ message: "Examination paper deleted successfully." });
 });

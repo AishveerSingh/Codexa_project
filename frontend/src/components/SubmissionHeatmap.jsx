@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { getAuthHeaders } from "../utils/session";
+import { apiRequest } from "../utils/api";
 
 export default function SubmissionHeatmap({ studentId, session }) {
   const [submissions, setSubmissions] = useState([]);
@@ -20,23 +21,15 @@ export default function SubmissionHeatmap({ studentId, session }) {
       }
 
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "https://codexa-project.onrender.com/api";
-        const res = await fetch(`${apiBaseUrl}/submissions/student/${targetStudentId}`, {
-          headers: getAuthHeaders(token)
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to load submission history");
-        }
-
-        const data = await res.json();
+        const data = await apiRequest(`/submissions/student/${targetStudentId}`, {}, token);
         if (isMounted) {
           setSubmissions(Array.isArray(data) ? data : []);
           setLoading(false);
         }
       } catch (err) {
         if (isMounted) {
-          setError(err.message);
+          console.warn("Submission history notice:", err.message);
+          setSubmissions([]);
           setLoading(false);
         }
       }

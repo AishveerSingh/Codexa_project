@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -25,6 +26,8 @@ import {
 } from "lucide-react";
 import { PlatformLayout } from "../../components/PlatformLayout";
 import SubmissionHeatmap from "../../components/SubmissionHeatmap";
+import { useTheme } from "../../components/ThemeProvider";
+import { ACCENT_PRESETS } from "../../components/accentPresets";
 import { getStudentSession, getAuthHeaders } from "../../utils/session";
 import { apiBaseUrl } from "../../utils/api";
 
@@ -48,6 +51,34 @@ function LinkedinIcon({ size = 20, color = "#0077b5" }) {
   );
 }
 
+function LeetcodeIcon({ size = 20, color = "#ffa116" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      <path d="M15 5l3 3" />
+    </svg>
+  );
+}
+
+function CodechefIcon({ size = 20, color = "#d97706" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 10.5 0A4 4 0 0 1 18 13.87" />
+      <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+    </svg>
+  );
+}
+
+function CodeforcesIcon({ size = 20, color = "#ef4444" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="12" width="4" height="9" rx="1" />
+      <rect x="10" y="6" width="4" height="15" rx="1" />
+      <rect x="17" y="3" width="4" height="18" rx="1" />
+    </svg>
+  );
+}
+
 export default function StudentAccountPage() {
   const session = getStudentSession();
   const user = session?.user;
@@ -61,6 +92,9 @@ export default function StudentAccountPage() {
         : {
             bio: profile?.bio || "Student on Codexa coding platform.",
             college: profile?.college || "Institute Student",
+            leetcode: "",
+            codechef: "",
+            codeforces: "",
             github: "",
             linkedin: "",
             portfolio: ""
@@ -69,6 +103,9 @@ export default function StudentAccountPage() {
       return {
         bio: profile?.bio || "Student on Codexa coding platform.",
         college: profile?.college || "Institute Student",
+        leetcode: "",
+        codechef: "",
+        codeforces: "",
         github: "",
         linkedin: "",
         portfolio: ""
@@ -101,9 +138,12 @@ export default function StudentAccountPage() {
     fullName: user?.full_name || "",
     bio: extraProfile.bio,
     college: extraProfile.college,
-    github: extraProfile.github,
-    linkedin: extraProfile.linkedin,
-    portfolio: extraProfile.portfolio
+    leetcode: extraProfile.leetcode || "",
+    codechef: extraProfile.codechef || "",
+    codeforces: extraProfile.codeforces || "",
+    github: extraProfile.github || "",
+    linkedin: extraProfile.linkedin || "",
+    portfolio: extraProfile.portfolio || ""
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -364,6 +404,9 @@ export default function StudentAccountPage() {
     const updatedExtra = {
       bio: editForm.bio,
       college: editForm.college,
+      leetcode: editForm.leetcode,
+      codechef: editForm.codechef,
+      codeforces: editForm.codeforces,
       github: editForm.github,
       linkedin: editForm.linkedin,
       portfolio: editForm.portfolio
@@ -666,7 +709,68 @@ export default function StudentAccountPage() {
             </div>
           </div>
 
-          <div className="sap-social-grid" style={{ marginBottom: "1.25rem" }}>
+          <div className="sap-social-grid" style={{ marginBottom: "1.25rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem" }}>
+            {/* LeetCode Card */}
+            {extraProfile.leetcode ? (
+              <a href={extraProfile.leetcode.startsWith("http") ? extraProfile.leetcode : `https://leetcode.com/u/${extraProfile.leetcode}`} target="_blank" rel="noreferrer" className="sap-social-card">
+                <LeetcodeIcon size={20} color="#ffa116" />
+                <div>
+                  <div className="sap-social-title">LeetCode</div>
+                  <div className="sap-social-handle">{extraProfile.leetcode}</div>
+                </div>
+                <ExternalLink size={14} color="#64748b" style={{ marginLeft: "auto" }} />
+              </a>
+            ) : (
+              <div className="sap-social-card" style={{ opacity: 0.75, cursor: "pointer" }} onClick={() => setIsEditModalOpen(true)}>
+                <LeetcodeIcon size={20} color="#ffa116" />
+                <div>
+                  <div className="sap-social-title">LeetCode</div>
+                  <div className="sap-social-handle" style={{ color: "#94a3b8" }}>Add LeetCode handle</div>
+                </div>
+              </div>
+            )}
+
+            {/* CodeChef Card */}
+            {extraProfile.codechef ? (
+              <a href={extraProfile.codechef.startsWith("http") ? extraProfile.codechef : `https://codechef.com/users/${extraProfile.codechef}`} target="_blank" rel="noreferrer" className="sap-social-card">
+                <CodechefIcon size={20} color="#d97706" />
+                <div>
+                  <div className="sap-social-title">CodeChef</div>
+                  <div className="sap-social-handle">{extraProfile.codechef}</div>
+                </div>
+                <ExternalLink size={14} color="#64748b" style={{ marginLeft: "auto" }} />
+              </a>
+            ) : (
+              <div className="sap-social-card" style={{ opacity: 0.75, cursor: "pointer" }} onClick={() => setIsEditModalOpen(true)}>
+                <CodechefIcon size={20} color="#d97706" />
+                <div>
+                  <div className="sap-social-title">CodeChef</div>
+                  <div className="sap-social-handle" style={{ color: "#94a3b8" }}>Add CodeChef handle</div>
+                </div>
+              </div>
+            )}
+
+            {/* Codeforces Card */}
+            {extraProfile.codeforces ? (
+              <a href={extraProfile.codeforces.startsWith("http") ? extraProfile.codeforces : `https://codeforces.com/profile/${extraProfile.codeforces}`} target="_blank" rel="noreferrer" className="sap-social-card">
+                <CodeforcesIcon size={20} color="#ef4444" />
+                <div>
+                  <div className="sap-social-title">Codeforces</div>
+                  <div className="sap-social-handle">{extraProfile.codeforces}</div>
+                </div>
+                <ExternalLink size={14} color="#64748b" style={{ marginLeft: "auto" }} />
+              </a>
+            ) : (
+              <div className="sap-social-card" style={{ opacity: 0.75, cursor: "pointer" }} onClick={() => setIsEditModalOpen(true)}>
+                <CodeforcesIcon size={20} color="#ef4444" />
+                <div>
+                  <div className="sap-social-title">Codeforces</div>
+                  <div className="sap-social-handle" style={{ color: "#94a3b8" }}>Add Codeforces handle</div>
+                </div>
+              </div>
+            )}
+
+            {/* GitHub Card */}
             {extraProfile.github ? (
               <a href={extraProfile.github.startsWith("http") ? extraProfile.github : `https://${extraProfile.github}`} target="_blank" rel="noreferrer" className="sap-social-card">
                 <GithubIcon size={20} color="#cbd5e1" />
@@ -686,6 +790,7 @@ export default function StudentAccountPage() {
               </div>
             )}
 
+            {/* LinkedIn Card */}
             {extraProfile.linkedin ? (
               <a href={extraProfile.linkedin.startsWith("http") ? extraProfile.linkedin : `https://${extraProfile.linkedin}`} target="_blank" rel="noreferrer" className="sap-social-card">
                 <LinkedinIcon size={20} color="#0077b5" />
@@ -705,6 +810,7 @@ export default function StudentAccountPage() {
               </div>
             )}
 
+            {/* Portfolio Card */}
             {extraProfile.portfolio ? (
               <a href={extraProfile.portfolio.startsWith("http") ? extraProfile.portfolio : `https://${extraProfile.portfolio}`} target="_blank" rel="noreferrer" className="sap-social-card">
                 <Globe size={20} color="#a855f7" />
@@ -748,6 +854,23 @@ export default function StudentAccountPage() {
             <button className="sap-btn-primary" style={{ padding: "0.5rem 1rem", fontSize: "0.825rem" }} onClick={handleDownloadResume}>
               Download Resume
             </button>
+          </div>
+
+          {/* Interface Customization & Theme Settings */}
+          <div style={{
+            marginTop: "1.5rem",
+            padding: "1.25rem",
+            borderRadius: "14px",
+            background: "var(--lc-card-bg)",
+            border: "1px solid var(--lc-border)"
+          }}>
+            <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#ffffff", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              🎨 Interface Customization & Theme Settings
+            </h3>
+            <p style={{ fontSize: "0.775rem", color: "#94a3b8", marginBottom: "1rem" }}>
+              Personalize your workspace accent colors and light/dark theme. Changes take effect instantly across all pages.
+            </p>
+            <StudentThemeCustomizerBlock />
           </div>
         </section>
       </div>
@@ -827,6 +950,68 @@ export default function StudentAccountPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.825rem", color: "#cbd5e1", marginBottom: "0.35rem" }}>
+                    LeetCode Handle / URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.leetcode}
+                    placeholder="leetcode.com/u/username"
+                    onChange={(e) => setEditForm({ ...editForm, leetcode: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      borderRadius: "8px",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      color: "#ffffff"
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.825rem", color: "#cbd5e1", marginBottom: "0.35rem" }}>
+                    CodeChef Handle / URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.codechef}
+                    placeholder="codechef.com/users/username"
+                    onChange={(e) => setEditForm({ ...editForm, codechef: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      borderRadius: "8px",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      color: "#ffffff"
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.825rem", color: "#cbd5e1", marginBottom: "0.35rem" }}>
+                    Codeforces Handle / URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.codeforces}
+                    placeholder="codeforces.com/profile/username"
+                    onChange={(e) => setEditForm({ ...editForm, codeforces: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      borderRadius: "8px",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      color: "#ffffff"
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.825rem", color: "#cbd5e1", marginBottom: "0.35rem" }}>
                     GitHub Handle / URL
                   </label>
                   <input
@@ -844,7 +1029,9 @@ export default function StudentAccountPage() {
                     }}
                   />
                 </div>
+              </div>
 
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.825rem", color: "#cbd5e1", marginBottom: "0.35rem" }}>
                     LinkedIn Handle / URL
@@ -864,26 +1051,26 @@ export default function StudentAccountPage() {
                     }}
                   />
                 </div>
-              </div>
 
-              <div>
-                <label style={{ display: "block", fontSize: "0.825rem", color: "#cbd5e1", marginBottom: "0.35rem" }}>
-                  Portfolio Website
-                </label>
-                <input
-                  type="text"
-                  value={editForm.portfolio}
-                  placeholder="yourportfolio.dev"
-                  onChange={(e) => setEditForm({ ...editForm, portfolio: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "0.65rem 0.85rem",
-                    borderRadius: "8px",
-                    background: "rgba(255, 255, 255, 0.06)",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    color: "#ffffff"
-                  }}
-                />
+                <div>
+                  <label style={{ display: "block", fontSize: "0.825rem", color: "#cbd5e1", marginBottom: "0.35rem" }}>
+                    Portfolio Website
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.portfolio}
+                    placeholder="yourportfolio.dev"
+                    onChange={(e) => setEditForm({ ...editForm, portfolio: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.65rem 0.85rem",
+                      borderRadius: "8px",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      color: "#ffffff"
+                    }}
+                  />
+                </div>
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem" }}>
@@ -979,5 +1166,103 @@ export default function StudentAccountPage() {
         </div>
       ) : null}
     </PlatformLayout>
+  );
+}
+
+function StudentThemeCustomizerBlock() {
+  const { theme, toggleTheme, accentColor, setAccentColor } = useTheme();
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", flexWrap: "wrap" }}>
+      <div>
+        <label style={{ fontSize: "0.825rem", fontWeight: 700, color: "#cbd5e1", display: "block", marginBottom: "0.5rem" }}>
+          Appearance Mode
+        </label>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            type="button"
+            onClick={() => theme !== "dark" && toggleTheme()}
+            style={{
+              background: theme === "dark" ? "var(--lc-accent, #ff7e29)" : "rgba(255, 255, 255, 0.05)",
+              color: theme === "dark" ? "#fff" : "#94a3b8",
+              border: "1px solid",
+              borderColor: theme === "dark" ? "var(--lc-accent, #ff7e29)" : "rgba(255, 255, 255, 0.12)",
+              borderRadius: "8px",
+              padding: "0.55rem 1rem",
+              fontWeight: 600,
+              fontSize: "0.825rem",
+              cursor: "pointer"
+            }}
+          >
+            🌙 Dark Mode
+          </button>
+          <button
+            type="button"
+            onClick={() => theme !== "light" && toggleTheme()}
+            style={{
+              background: theme === "light" ? "var(--lc-accent, #ff7e29)" : "rgba(255, 255, 255, 0.05)",
+              color: theme === "light" ? "#fff" : "#94a3b8",
+              border: "1px solid",
+              borderColor: theme === "light" ? "var(--lc-accent, #ff7e29)" : "rgba(255, 255, 255, 0.12)",
+              borderRadius: "8px",
+              padding: "0.55rem 1rem",
+              fontWeight: 600,
+              fontSize: "0.825rem",
+              cursor: "pointer"
+            }}
+          >
+            ☀️ Light Mode
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label style={{ fontSize: "0.825rem", fontWeight: 700, color: "#cbd5e1", display: "block", marginBottom: "0.5rem" }}>
+          Primary Accent Color
+        </label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
+          {ACCENT_PRESETS.map((preset) => {
+            const isSelected = accentColor.toLowerCase() === preset.color.toLowerCase();
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => setAccentColor(preset.color)}
+                style={{
+                  background: "rgba(0, 0, 0, 0.2)",
+                  border: isSelected ? `2px solid ${preset.color}` : "1px solid rgba(255, 255, 255, 0.12)",
+                  borderRadius: "8px",
+                  padding: "0.45rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  cursor: "pointer",
+                  boxShadow: isSelected ? `0 0 10px ${preset.color}66` : "none"
+                }}
+              >
+                <span style={{
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "50%",
+                  background: preset.color,
+                  display: "inline-block",
+                  flexShrink: 0
+                }} />
+                <span style={{
+                  fontSize: "0.725rem",
+                  fontWeight: isSelected ? 700 : 500,
+                  color: isSelected ? preset.color : "#94a3b8",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}>
+                  {preset.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }

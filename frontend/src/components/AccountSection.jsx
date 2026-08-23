@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { PlatformSection, PlatformStats } from "./PlatformLayout";
 import { getAuthHeaders } from "../utils/session";
+import { useTheme } from "./ThemeProvider";
+import { ACCENT_PRESETS } from "./accentPresets";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
 
@@ -326,6 +328,126 @@ export default function AccountSection({ role, session, saveSession }) {
           {passwordStatus.error ? <p className="form-status error">{passwordStatus.error}</p> : null}
         </form>
       ) : null}
+
+      {/* Interface Customization & Accent Color Settings */}
+      <div style={{
+        marginTop: "2rem",
+        background: "var(--lc-card-bg)",
+        border: "1px solid var(--lc-border)",
+        borderRadius: "16px",
+        padding: "1.5rem"
+      }}>
+        <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--lc-text-primary)", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          🎨 Interface Customization & Theme Settings
+        </h3>
+        <p style={{ fontSize: "0.85rem", color: "var(--lc-text-muted)", marginBottom: "1.25rem" }}>
+          Choose your workspace accent colors and appearance mode. Changes take effect instantly across all pages.
+        </p>
+
+        <AccountThemeCustomizer />
+      </div>
     </PlatformSection>
+  );
+}
+
+function AccountThemeCustomizer() {
+  const { theme, toggleTheme, accentColor, setAccentColor } = useTheme();
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", flexWrap: "wrap" }}>
+        {/* Appearance Mode */}
+        <div>
+          <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--lc-text-primary)", display: "block", marginBottom: "0.5rem" }}>
+            Appearance Mode
+          </label>
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <button
+              type="button"
+              onClick={() => theme !== "dark" && toggleTheme()}
+              style={{
+                background: theme === "dark" ? "var(--lc-accent, #ff7e29)" : "rgba(255, 255, 255, 0.05)",
+                color: theme === "dark" ? "#fff" : "var(--lc-text-muted)",
+                border: "1px solid",
+                borderColor: theme === "dark" ? "var(--lc-accent, #ff7e29)" : "var(--lc-border)",
+                borderRadius: "8px",
+                padding: "0.6rem 1rem",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                cursor: "pointer"
+              }}
+            >
+              🌙 Dark Mode
+            </button>
+            <button
+              type="button"
+              onClick={() => theme !== "light" && toggleTheme()}
+              style={{
+                background: theme === "light" ? "var(--lc-accent, #ff7e29)" : "rgba(255, 255, 255, 0.05)",
+                color: theme === "light" ? "#fff" : "var(--lc-text-muted)",
+                border: "1px solid",
+                borderColor: theme === "light" ? "var(--lc-accent, #ff7e29)" : "var(--lc-border)",
+                borderRadius: "8px",
+                padding: "0.6rem 1rem",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                cursor: "pointer"
+              }}
+            >
+              ☀️ Light Mode
+            </button>
+          </div>
+        </div>
+
+        {/* Accent Color Preset Swatches */}
+        <div>
+          <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--lc-text-primary)", display: "block", marginBottom: "0.5rem" }}>
+            Primary Accent Color
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
+            {ACCENT_PRESETS.map((preset) => {
+              const isSelected = accentColor.toLowerCase() === preset.color.toLowerCase();
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => setAccentColor(preset.color)}
+                  style={{
+                    background: "rgba(0, 0, 0, 0.2)",
+                    border: isSelected ? `2px solid ${preset.color}` : "1px solid var(--lc-border)",
+                    borderRadius: "8px",
+                    padding: "0.5rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    cursor: "pointer",
+                    boxShadow: isSelected ? `0 0 10px ${preset.color}66` : "none"
+                  }}
+                >
+                  <span style={{
+                    width: "14px",
+                    height: "14px",
+                    borderRadius: "50%",
+                    background: preset.color,
+                    display: "inline-block",
+                    flexShrink: 0
+                  }} />
+                  <span style={{
+                    fontSize: "0.75rem",
+                    fontWeight: isSelected ? 700 : 500,
+                    color: isSelected ? preset.color : "var(--lc-text-muted)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  }}>
+                    {preset.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

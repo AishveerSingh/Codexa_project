@@ -220,6 +220,16 @@ export async function runSubmission(req, res, next) {
       });
     }
 
+    const sampleTestCaseResult = await pool.query(
+      `
+        SELECT id, input_data, expected_output, is_sample, sort_order
+        FROM test_cases
+        WHERE problem_id = $1 AND is_sample = TRUE
+        ORDER BY sort_order ASC, created_at ASC
+      `,
+      [problemId]
+    );
+
     let testCasesToRun = sampleTestCaseResult.rows;
 
     if (testCasesToRun.length === 0) {

@@ -175,14 +175,23 @@ CREATE TABLE IF NOT EXISTS course_assignments (
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   title VARCHAR(180) NOT NULL,
   description TEXT,
-  assignment_type VARCHAR(20) NOT NULL DEFAULT 'coding' CHECK (assignment_type IN ('coding', 'theory')),
+  assignment_type VARCHAR(20) NOT NULL DEFAULT 'coding',
+  start_date TIMESTAMPTZ,
   due_date TIMESTAMPTZ,
-  max_score INTEGER NOT NULL DEFAULT 100 CHECK (max_score > 0),
+  time_limit_minutes INTEGER,
+  max_score INTEGER NOT NULL DEFAULT 100,
+  status VARCHAR(20) NOT NULL DEFAULT 'published',
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE course_assignments
+ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS time_limit_minutes INTEGER,
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'published';
+
+-- Legacy table kept for reference, but won't be actively used by new system
 CREATE TABLE IF NOT EXISTS course_assignment_submissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assignment_id UUID NOT NULL REFERENCES course_assignments(id) ON DELETE CASCADE,
@@ -192,11 +201,74 @@ CREATE TABLE IF NOT EXISTS course_assignment_submissions (
   attachment_url TEXT NOT NULL DEFAULT '',
   grade INTEGER CHECK (grade BETWEEN 0 AND 100),
   feedback TEXT NOT NULL DEFAULT '',
-  status VARCHAR(20) NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'graded')),
+  status VARCHAR(20) NOT NULL DEFAULT 'submitted',
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (assignment_id, student_id)
+);
+
+CREATE TABLE IF NOT EXISTS mcq_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  question_text TEXT NOT NULL,
+  options JSONB NOT NULL,
+  correct_option_index INTEGER NOT NULL,
+  marks INTEGER NOT NULL DEFAULT 1,
+  negative_marks INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS assignment_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  assignment_id UUID NOT NULL REFERENCES course_assignments(id) ON DELETE CASCADE,
+  question_type VARCHAR(20) NOT NULL CHECK (question_type IN ('mcq', 'coding')),
+  mcq_id UUID REFERENCES mcq_questions(id) ON DELETE CASCADE,
+  course_coding_problem_id UUID REFERENCES course_coding_problems(id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  marks INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS assignment_student_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  assignment_id UUID NOT NULL REFERENCES course_assignments(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'late')),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  submitted_at TIMESTAMPTZ,
+  total_score INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (assignment_id, student_id)
+);
+
+CREATE TABLE IF NOT EXISTS assignment_mcq_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id UUID NOT NULL REFERENCES assignment_student_attempts(id) ON DELETE CASCADE,
+  assignment_question_id UUID NOT NULL REFERENCES assignment_questions(id) ON DELETE CASCADE,
+  selected_option_index INTEGER,
+  is_correct BOOLEAN,
+  marks_obtained INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (attempt_id, assignment_question_id)
+);
+
+CREATE TABLE IF NOT EXISTS assignment_coding_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id UUID NOT NULL REFERENCES assignment_student_attempts(id) ON DELETE CASCADE,
+  assignment_question_id UUID NOT NULL REFERENCES assignment_questions(id) ON DELETE CASCADE,
+  language VARCHAR(30),
+  source_code TEXT,
+  execution_result JSONB,
+  passed_test_cases INTEGER DEFAULT 0,
+  total_test_cases INTEGER DEFAULT 0,
+  marks_obtained INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (attempt_id, assignment_question_id)
 );
 
 CREATE TABLE IF NOT EXISTS submissions (

@@ -35,7 +35,8 @@ export const env = {
     "postgresql://postgres:postgres@localhost:5432/coding_platform",
   pgSsl:
     process.env.PGSSL === "true" ||
-    String(process.env.DATABASE_URL || "").includes("neon.tech"),
+    String(process.env.DATABASE_URL || "").includes("neon.tech") ||
+    String(process.env.DATABASE_URL || "").includes("sslmode=require"),
   jwtSecret: (() => {
     if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
     if (process.env.NODE_ENV === "production") {

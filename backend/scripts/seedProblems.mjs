@@ -5,9 +5,14 @@ dotenv.config({ path: new URL("../.env", import.meta.url) });
 
 const { Pool } = pg;
 
+const isSsl =
+  process.env.PGSSL === "true" ||
+  String(process.env.DATABASE_URL || "").includes("neon.tech") ||
+  String(process.env.DATABASE_URL || "").includes("sslmode=require");
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: false } : false
+  ssl: isSsl ? { rejectUnauthorized: false } : false
 });
 
 const problems = [

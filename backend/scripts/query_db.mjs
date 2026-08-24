@@ -3,8 +3,14 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: new URL("../.env", import.meta.url) });
 
+const isSsl =
+  process.env.PGSSL === "true" ||
+  String(process.env.DATABASE_URL || "").includes("neon.tech") ||
+  String(process.env.DATABASE_URL || "").includes("sslmode=require");
+
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
+  ssl: isSsl ? { rejectUnauthorized: false } : false
 });
 
 async function main() {

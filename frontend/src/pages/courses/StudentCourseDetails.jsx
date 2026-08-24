@@ -156,53 +156,25 @@ export default function StudentCourseDetails() {
                       {assignment.type} | Due{" "}
                       {assignment.dueDate ? new Date(assignment.dueDate).toLocaleString() : "No deadline"}
                     </p>
-                    <textarea
-                      rows="5"
-                      placeholder="Answer text or notes"
-                      value={submissionForms[assignment.id]?.answerText || ""}
-                      onChange={(event) =>
-                        setSubmissionForms((current) => ({
-                          ...current,
-                          [assignment.id]: {
-                            ...(current[assignment.id] || {}),
-                            answerText: event.target.value
-                          }
-                        }))
-                      }
-                    />
-                    <textarea
-                      rows="8"
-                      placeholder="Paste source code for coding assignments"
-                      value={submissionForms[assignment.id]?.sourceCode || ""}
-                      onChange={(event) =>
-                        setSubmissionForms((current) => ({
-                          ...current,
-                          [assignment.id]: {
-                            ...(current[assignment.id] || {}),
-                            sourceCode: event.target.value
-                          }
-                        }))
-                      }
-                    />
-                    <button
+                    <Link
                       className="auth-button student-button detail-link"
-                      type="button"
-                      onClick={() => handleAssignmentSubmit(assignment.id)}
+                      to={`/student/courses/${courseId}/assignments/${assignment.id}/attempt`}
+                      style={{ marginTop: "1rem", display: "inline-block" }}
                     >
-                      Submit assignment
-                    </button>
-                    {submitStatus[assignment.id]?.success ? (
-                      <p className="form-status success">{submitStatus[assignment.id].success}</p>
-                    ) : null}
-                    {submitStatus[assignment.id]?.error ? (
-                      <p className="form-status error">{submitStatus[assignment.id].error}</p>
-                    ) : null}
-                    {ownSubmission ? (
-                      <p className="question-meta">
-                        Last result: {ownSubmission.status}
-                        {ownSubmission.grade !== null ? ` | Grade ${ownSubmission.grade}` : ""}
-                        {ownSubmission.feedback ? ` | ${ownSubmission.feedback}` : ""}
-                      </p>
+                      {assignment.attempt?.status === 'submitted' ? 'View Result' : (assignment.attempt ? 'Continue Assignment' : 'Start Assignment')}
+                    </Link>
+                    
+                    {assignment.attempt ? (
+                      <div className="course-progress-block" style={{ marginTop: "1rem" }}>
+                        <p className="question-meta" style={{ margin: 0 }}>
+                          Status: <strong style={{ color: assignment.attempt.status === 'submitted' ? "green" : "orange" }}>{assignment.attempt.status}</strong>
+                        </p>
+                        {assignment.attempt.status === 'submitted' && (
+                           <p className="question-meta" style={{ margin: "0.25rem 0 0 0" }}>
+                             Score: <strong>{assignment.attempt.total_score} / {assignment.max_score}</strong>
+                           </p>
+                        )}
+                      </div>
                     ) : null}
                   </article>
                 );

@@ -637,46 +637,64 @@ export default function AdminExamsPage() {
 
         {/* Schedule Modal */}
         {showScheduleModal && (
-          <div style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.8)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: "1.5rem"
-          }}>
-            <div style={{
-              background: "var(--lc-card-bg)",
-              border: "1px solid var(--lc-border)",
-              borderRadius: "16px",
-              padding: "2rem",
-              maxWidth: "560px",
-              width: "100%",
-              maxHeight: "90vh",
-              overflowY: "auto"
-            }}>
-              <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: "0.25rem", color: "var(--lc-text-primary)" }}>
-                Schedule Institutional MST Exam
-              </h2>
-              <p style={{ fontSize: "0.85rem", color: "var(--lc-text-muted)", marginBottom: "1.5rem" }}>
-                Select target course, title, start/end timestamps, and duration.
-              </p>
+          <div className="lc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowScheduleModal(false); }}>
+            <div className="lc-modal-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                    <span style={{
+                      background: "rgba(255, 126, 41, 0.15)",
+                      color: "#ff7e29",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      padding: "0.2rem 0.6rem",
+                      borderRadius: "999px",
+                      border: "1px solid rgba(255, 126, 41, 0.3)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em"
+                    }}>
+                      Institutional MST
+                    </span>
+                  </div>
+                  <h2 style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--lc-text-primary)", margin: 0 }}>
+                    Schedule Institutional MST Exam
+                  </h2>
+                  <p style={{ fontSize: "0.825rem", color: "var(--lc-text-muted)", marginTop: "0.25rem", margin: 0 }}>
+                    Select target course, title, start/end timestamps, and parameters.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowScheduleModal(false)}
+                  style={{
+                    background: "rgba(255, 255, 255, 0.06)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    color: "var(--lc-text-muted)",
+                    borderRadius: "8px",
+                    width: "32px",
+                    height: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255, 255, 255, 0.14)"; e.currentTarget.style.color = "#fff"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255, 255, 255, 0.06)"; e.currentTarget.style.color = "var(--lc-text-muted)"; }}
+                >
+                  ✕
+                </button>
+              </div>
 
               {scheduleStatus.error && (
-                <div className="lc-error-banner" style={{ marginBottom: "1rem" }}>
+                <div className="lc-error-banner" style={{ marginBottom: "1.25rem", padding: "0.75rem 1rem", borderRadius: "10px", background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#ef4444", fontSize: "0.85rem" }}>
                   <span>{scheduleStatus.error}</span>
                 </div>
               )}
 
               <form onSubmit={handleScheduleSubmit}>
-                <div className="lc-form-group" style={{ marginBottom: "1rem" }}>
-                  <label className="lc-input-label">Target Course</label>
+                <div className="lc-form-group">
+                  <label className="lc-input-label lc-input-label-required">Target Course</label>
                   <select
                     className="lc-form-input"
                     value={scheduleForm.courseId}
@@ -692,8 +710,8 @@ export default function AdminExamsPage() {
                   </select>
                 </div>
 
-                <div className="lc-form-group" style={{ marginBottom: "1rem" }}>
-                  <label className="lc-input-label">Examination Title</label>
+                <div className="lc-form-group">
+                  <label className="lc-input-label lc-input-label-required">Examination Title</label>
                   <input
                     type="text"
                     placeholder="e.g. Mid-Semester Examination 1 (MST-1)"
@@ -704,20 +722,20 @@ export default function AdminExamsPage() {
                   />
                 </div>
 
-                <div className="lc-form-group" style={{ marginBottom: "1rem" }}>
+                <div className="lc-form-group">
                   <label className="lc-input-label">Description & Syllabus</label>
                   <textarea
                     placeholder="e.g. Institutional MST covering Units 1 & 2."
                     className="lc-form-input"
-                    rows="2"
+                    rows="3"
                     value={scheduleForm.description}
                     onChange={(e) => setScheduleForm({ ...scheduleForm, description: e.target.value })}
                   />
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div className="lc-form-row">
                   <div className="lc-form-group">
-                    <label className="lc-input-label">Start Date & Time</label>
+                    <label className="lc-input-label lc-input-label-required">Start Date & Time</label>
                     <input
                       type="datetime-local"
                       className="lc-form-input"
@@ -727,7 +745,7 @@ export default function AdminExamsPage() {
                     />
                   </div>
                   <div className="lc-form-group">
-                    <label className="lc-input-label">End Date & Time</label>
+                    <label className="lc-input-label lc-input-label-required">End Date & Time</label>
                     <input
                       type="datetime-local"
                       className="lc-form-input"
@@ -738,9 +756,9 @@ export default function AdminExamsPage() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div className="lc-form-row">
                   <div className="lc-form-group">
-                    <label className="lc-input-label">Duration (Minutes)</label>
+                    <label className="lc-input-label lc-input-label-required">Duration (Minutes)</label>
                     <input
                       type="number"
                       min="15"
@@ -752,7 +770,7 @@ export default function AdminExamsPage() {
                     />
                   </div>
                   <div className="lc-form-group">
-                    <label className="lc-input-label">Total Marks</label>
+                    <label className="lc-input-label lc-input-label-required">Total Marks</label>
                     <input
                       type="number"
                       min="10"
@@ -765,18 +783,19 @@ export default function AdminExamsPage() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
                   <button
                     type="button"
                     onClick={() => setShowScheduleModal(false)}
                     style={{
-                      background: "rgba(255, 255, 255, 0.1)",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "8px",
-                      padding: "0.6rem 1.2rem",
+                      background: "rgba(255, 255, 255, 0.08)",
+                      color: "#cbd5e1",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      borderRadius: "10px",
+                      padding: "0.65rem 1.25rem",
                       cursor: "pointer",
-                      fontSize: "0.85rem"
+                      fontSize: "0.85rem",
+                      fontWeight: 600
                     }}
                   >
                     Cancel
@@ -785,14 +804,15 @@ export default function AdminExamsPage() {
                     type="submit"
                     disabled={scheduleStatus.loading}
                     style={{
-                      background: "#ef4444",
+                      background: "linear-gradient(135deg, #ff7e29, #f97316)",
                       color: "#fff",
                       border: "none",
-                      borderRadius: "8px",
-                      padding: "0.6rem 1.4rem",
+                      borderRadius: "10px",
+                      padding: "0.65rem 1.5rem",
                       fontWeight: 700,
                       cursor: "pointer",
-                      fontSize: "0.85rem"
+                      fontSize: "0.85rem",
+                      boxShadow: "0 4px 14px rgba(255, 126, 41, 0.35)"
                     }}
                   >
                     {scheduleStatus.loading ? "Scheduling..." : "Schedule MST"}

@@ -191,6 +191,9 @@ ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS time_limit_minutes INTEGER,
 ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'published';
 
+ALTER TABLE course_assignments DROP CONSTRAINT IF EXISTS course_assignments_assignment_type_check;
+ALTER TABLE course_assignments ADD CONSTRAINT course_assignments_assignment_type_check CHECK (assignment_type IN ('coding', 'theory', 'mst', 'quiz', 'assignment'));
+
 -- Legacy table kept for reference, but won't be actively used by new system
 CREATE TABLE IF NOT EXISTS course_assignment_submissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -12,6 +12,13 @@ const { title, description, startDate, dueDate, startTime, endTime, timeLimitMin
   try {
     await client.query("BEGIN");
 
+    const startVal = startTime || startDate || null;
+    const endVal = endTime || dueDate || null;
+    const allowedTypes = ['coding', 'theory', 'mst', 'quiz', 'assignment'];
+    const safeType = type && allowedTypes.includes(type.trim().toLowerCase()) 
+      ? type.trim().toLowerCase() 
+      : (isMst ? 'mst' : 'coding');
+
     // 1. Create Assignment
     const assignmentResult = await client.query(
       `
@@ -25,13 +32,13 @@ const { title, description, startDate, dueDate, startTime, endTime, timeLimitMin
         req.course.id,
         title.trim(),
         description?.trim() || "",
-        type?.trim() || "coding",
-        startDate || null,
-        dueDate || null,
-        startTime || null,
-        endTime || null,
+        safeType,
+        startVal,
+        endVal,
+        startVal,
+        endVal,
         timeLimitMinutes || null,
-        Number(durationMinutes) || null,
+        Number(durationMinutes) || 90,
         Number(maxScore) || 100,
         status || 'published',
         Boolean(isMst),
@@ -103,8 +110,6 @@ const { title, description, startDate, dueDate, startTime, endTime, timeLimitMin
           ]
         );
       }
-    }
-
     }
 
     await client.query("COMMIT");
@@ -187,6 +192,23 @@ export const listAssignmentsForCourse = asyncHandler(async (req, res) => {
     `,
     [req.course.id]
   );
+
+  const submissionsResult = await pool.query(
+    `
+      SELECT id, assignment_id, student_id, status, total_score, submitted_at
+      FROM assignment_student_attempts
+      WHERE assignment_id IN (SELECT id FROM course_assignments WHERE course_id = $1)
+    `,
+    [req.course.id]
+  );
+
+  const groupedSubmissions = new Map();
+  submissionsResult.rows.forEach((sub) => {
+    if (!groupedSubmissions.has(sub.assignment_id)) {
+      groupedSubmissions.set(sub.assignment_id, []);
+    }
+    groupedSubmissions.get(sub.assignment_id).push(sub);
+  });
 
   let attempts = { rows: [] };
   if (req.currentUser.role === 'student') {
@@ -362,6 +384,9 @@ export const updateAssignment = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: "Access denied. Students cannot modify examination papers or test scores." });
   }
 
+  const allowedTypes = ['coding', 'theory', 'mst', 'quiz', 'assignment'];
+  const safeType = type && allowedTypes.includes(type.trim().toLowerCase()) ? type.trim().toLowerCase() : null;
+
   const result = await pool.query(
     `
       UPDATE course_assignments
@@ -382,7 +407,7 @@ export const updateAssignment = asyncHandler(async (req, res) => {
     [
       title?.trim() || null,
       description?.trim() || null,
-      type?.trim() || null,
+      safeType,
       dueDate || endTime || null,
       startTime || null,
       endTime || dueDate || null,

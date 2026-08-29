@@ -28,6 +28,13 @@ async function main() {
       ADD COLUMN IF NOT EXISTS is_mst BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS is_proctored BOOLEAN DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+
+      ALTER TABLE course_assignments
+      DROP CONSTRAINT IF EXISTS course_assignments_assignment_type_check;
+
+      ALTER TABLE course_assignments
+      ADD CONSTRAINT course_assignments_assignment_type_check
+      CHECK (assignment_type IN ('coding', 'theory', 'mst', 'quiz', 'assignment'));
     `);
 
     console.log("course_assignments schema updated successfully!");

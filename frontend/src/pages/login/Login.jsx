@@ -557,14 +557,21 @@ export default function Login() {
           position: relative;
           display: flex;
           align-items: center;
+          width: 100%;
         }
 
         .lc-input-icon {
           position: absolute;
           left: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
           color: var(--lc-text-muted);
           pointer-events: none;
           transition: color 0.3s ease;
+          z-index: 2;
         }
 
         .lc-form-input {
@@ -572,7 +579,7 @@ export default function Login() {
           background-color: var(--lc-input-bg);
           border: 1px solid var(--lc-input-border);
           border-radius: 10px;
-          padding: 12px 14px 12px 42px;
+          padding: 12px 14px 12px 42px !important;
           font-size: 14px;
           color: var(--lc-text-primary);
           transition: all 0.25s ease;
@@ -580,7 +587,8 @@ export default function Login() {
         }
 
         .lc-form-input.password-input {
-          padding-right: 42px;
+          padding-left: 42px !important;
+          padding-right: 42px !important;
         }
 
         .lc-form-input:focus {
@@ -590,10 +598,11 @@ export default function Login() {
           box-shadow: 0 0 0 3px rgba(250, 161, 22, 0.15);
         }
 
-
         .lc-eye-toggle {
           position: absolute;
           right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
           background: none;
           border: none;
           color: #4F5A6E;
@@ -602,6 +611,7 @@ export default function Login() {
           display: flex;
           align-items: center;
           transition: color 0.2s;
+          z-index: 2;
         }
 
         .lc-eye-toggle:hover {

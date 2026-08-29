@@ -180,6 +180,11 @@ function mapAssignmentRow(row, includeSubmissionDetails = false) {
     description: row.description || "",
     type: row.assignment_type,
     dueDate: row.due_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    durationMinutes: row.duration_minutes,
+    isMst: row.is_mst,
+    isProctored: row.is_proctored,
     maxScore: row.max_score,
     submissionsCount: row.submissions_count ?? 0,
     createdAt: row.created_at,
@@ -506,15 +511,21 @@ export const getCourseById = asyncHandler(async (req, res) => {
           a.title,
           a.description,
           a.assignment_type,
+          a.start_date,
           a.due_date,
+          a.start_time,
+          a.end_time,
+          a.duration_minutes,
+          a.is_mst,
+          a.is_proctored,
           a.max_score,
           a.created_at,
           COUNT(s.id)::int AS submissions_count
         FROM course_assignments a
-        LEFT JOIN course_assignment_submissions s ON s.assignment_id = a.id
+        LEFT JOIN assignment_student_attempts s ON s.assignment_id = a.id
         WHERE a.course_id = $1
         GROUP BY a.id
-        ORDER BY a.due_date ASC NULLS LAST, a.created_at DESC
+        ORDER BY a.start_time ASC NULLS LAST, a.due_date ASC NULLS LAST, a.created_at DESC
       `,
       [req.course.id]
     );

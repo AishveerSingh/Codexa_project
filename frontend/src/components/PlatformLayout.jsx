@@ -138,22 +138,6 @@ function getSidebarIcon(icon) {
           <line x1="16" y1="11" x2="22" y2="11" />
         </svg>
       );
-    case "add-faculty":
-      return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-        </svg>
-      );
-    case "submissions":
-      return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-        </svg>
-      );
     case "analytics":
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -162,12 +146,12 @@ function getSidebarIcon(icon) {
           <line x1="6" y1="20" x2="6" y2="14" />
         </svg>
       );
-    case "settings":
     case "account":
+    case "settings":
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
         </svg>
       );
     default:
@@ -185,6 +169,11 @@ function isItemActive(pathname, search, target) {
   const [targetPath, targetQuery] = target.split("?");
   if (targetQuery) {
     return pathname === targetPath && search.includes(targetQuery);
+  }
+  if (targetPath === "/admin/students") {
+    if (pathname.startsWith("/admin/students") || pathname.startsWith("/admin/faculty") || pathname.startsWith("/admin/admins")) {
+      return true;
+    }
   }
   if (pathname === targetPath) {
     return !search || !search.includes("tab=");
@@ -213,6 +202,7 @@ export function PlatformLayout({
   const isUsersActive = location.pathname.startsWith("/admin/students");
   const isCoursesActive = location.pathname.startsWith("/admin/courses");
   const isProblemsActive = location.pathname.startsWith("/admin/problems");
+  const isExamsActive = location.pathname.startsWith("/admin/exams");
 
   const navigate = useNavigate();
   const categories = navCategoriesByRole[role] ?? [];
@@ -381,10 +371,31 @@ export function PlatformLayout({
 
         <div className="sidebar-profile-card">
           <div className="sidebar-profile-avatar">
-            {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : "AD"}
+            {(() => {
+              const name = user?.full_name || user?.fullName || user?.name || (user?.email ? user.email.split("@")[0].replace(/[._-]/g, " ").replace(/\d+/g, "").trim() : "");
+              if (name) {
+                const words = name.split(" ").filter(Boolean);
+                if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+                return name.slice(0, 2).toUpperCase();
+              }
+              return role === "admin" ? "AD" : role === "faculty" ? "FC" : "ST";
+            })()}
           </div>
           <div className="sidebar-profile-info">
-            <span className="sidebar-profile-name">{user?.full_name || "Admin"}</span>
+            <span className="sidebar-profile-name">
+              {(() => {
+                if (user?.full_name && user.full_name.trim() && user.full_name.toLowerCase() !== "student" && user.full_name.toLowerCase() !== "admin") {
+                  return user.full_name.trim();
+                }
+                if (user?.fullName && user.fullName.trim()) return user.fullName.trim();
+                if (user?.name && user.name.trim()) return user.name.trim();
+                if (user?.email) {
+                  const raw = user.email.split("@")[0].replace(/[._-]/g, " ").replace(/\d+/g, "").trim();
+                  if (raw) return raw.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+                }
+                return role === "admin" ? "Platform Administrator" : role === "faculty" ? "Faculty Member" : "Student";
+              })()}
+            </span>
             <span className="sidebar-profile-role">
               {role === "admin"
                 ? "Platform Administrator"
@@ -397,20 +408,20 @@ export function PlatformLayout({
       </aside>
 
       <section className="platform-main">
-
-
-        <header className="platform-hero">
-          <div className="platform-hero-copy">
-            {eyebrow ? <p className="platform-eyebrow" style={{ display: "none" }}>{eyebrow}</p> : null}
-            <h1>{title}</h1>
-            {subtitle ? <p className="platform-hero-text">{subtitle}</p> : null}
-          </div>
-          <div className="platform-hero-side">
-            {role === "admin" && <span className="admin-access-pill-sub">ADMIN ACCESS</span>}
-            {meta ? <div className="platform-meta-chip">{meta}</div> : null}
-            {actions ? <div className="platform-hero-actions">{actions}</div> : null}
-          </div>
-        </header>
+        {(title || subtitle || actions) && (
+          <header className="platform-hero">
+            <div className="platform-hero-copy">
+              {eyebrow ? <p className="platform-eyebrow" style={{ display: "none" }}>{eyebrow}</p> : null}
+              {title && <h1>{title}</h1>}
+              {subtitle ? <p className="platform-hero-text">{subtitle}</p> : null}
+            </div>
+            <div className="platform-hero-side">
+              {role === "admin" && <span className="admin-access-pill-sub">ADMIN ACCESS</span>}
+              {meta ? <div className="platform-meta-chip">{meta}</div> : null}
+              {actions ? <div className="platform-hero-actions">{actions}</div> : null}
+            </div>
+          </header>
+        )}
 
         <div className="platform-content">
           {role === "admin" && (
@@ -457,6 +468,16 @@ export function PlatformLayout({
                   <polyline points="8 6 2 12 8 18" />
                 </svg>
                 Problems
+              </Link>
+
+              <Link to="/admin/exams" className={`platform-tab ${isExamsActive ? 'active' : ''}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                Tests & MST
               </Link>
             </div>
           )}

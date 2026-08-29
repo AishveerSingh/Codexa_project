@@ -10,14 +10,21 @@ function normalizeStringArray(values, formatter = (value) => value) {
   return [...new Set(values.map((value) => formatter(String(value).trim())).filter(Boolean))];
 }
 
-function normalizeCoursePayload(body) {
-  const branches = normalizeStringArray(body.branchTargets, (value) => value.toUpperCase());
-  const semesters = normalizeStringArray(body.semesterTargets, (value) => Number(value)).filter((value) =>
+function normalizeCoursePayload(body, currentUser = null) {
+  let branches = normalizeStringArray(body.branchTargets, (value) => value.toUpperCase());
+  let semesters = normalizeStringArray(body.semesterTargets, (value) => Number(value)).filter((value) =>
     Number.isFinite(value)
   );
-  const sections = normalizeStringArray(body.sectionTargets, (value) => value.toUpperCase());
-  const batches = normalizeStringArray(body.batchTargets);
-  const facultyIds = normalizeStringArray(body.facultyIds);
+  let sections = normalizeStringArray(body.sectionTargets, (value) => value.toUpperCase());
+  let batches = normalizeStringArray(body.batchTargets);
+  let facultyIds = normalizeStringArray(body.facultyIds);
+
+  // Friendly defaults for quick course creation
+  if (branches.length === 0) branches = ["CSE"];
+  if (semesters.length === 0) semesters = [1, 2, 3, 4, 5, 6, 7, 8];
+  if (sections.length === 0) sections = ["A", "B"];
+  if (batches.length === 0) batches = ["2022-2026", "2023-2027", "2024-2028", "2025-2029"];
+  if (facultyIds.length === 0 && currentUser?.id) facultyIds = [currentUser.id];
 
   return {
     code: body.code?.trim().toUpperCase() || "",
@@ -298,11 +305,11 @@ export const getCourseFilters = asyncHandler(async (_req, res) => {
 });
 
 export const createCourse = asyncHandler(async (req, res) => {
-  const payload = normalizeCoursePayload(req.body);
+  const payload = normalizeCoursePayload(req.body, req.currentUser);
 
-  if (!payload.code || !payload.title || payload.audiences.length === 0 || payload.facultyIds.length === 0) {
+  if (!payload.code || !payload.title) {
     return res.status(400).json({
-      message: "Course code, title, audience filters, and assigned faculty are required."
+      message: "Course code and title are required."
     });
   }
 
@@ -425,31 +432,44 @@ export const listCourses = asyncHandler(async (req, res) => {
   }
 
   if (req.currentUser.role === "student" && req.roleProfile) {
+    const studentBranch = (req.roleProfile.branch || "").trim().toUpperCase();
+    const studentSem = Number(req.roleProfile.semester) || 1;
+    const studentSec = (req.roleProfile.section || "").trim().toUpperCase();
+    const studentBatch = (req.roleProfile.batch || "").trim();
+
     values.push(
-      req.roleProfile.branch,
-      req.roleProfile.semester,
-      req.roleProfile.section,
-      req.roleProfile.batch,
+      studentBranch,
+      studentSem,
+      studentSec,
+      studentBatch,
       req.currentUser.id
     );
+
     filters.push(
-      `EXISTS (
-        SELECT 1
-        FROM course_audiences ca
-        WHERE ca.course_id = c.id
-          AND ca.branch = $${values.length - 4}
-          AND ca.semester = $${values.length - 3}
-          AND ca.section = $${values.length - 2}
-          AND ca.batch = $${values.length - 1}
-      )`
-    );
-    filters.push(
-      `EXISTS (
-        SELECT 1
-        FROM course_enrollments ce
-        WHERE ce.course_id = c.id
-          AND ce.student_id = $${values.length}
-          AND ce.status = 'enrolled'
+      `(
+        EXISTS (
+          SELECT 1
+          FROM course_enrollments ce
+          WHERE ce.course_id = c.id
+            AND ce.student_id = $${values.length}
+            AND ce.status = 'enrolled'
+        )
+        OR
+        EXISTS (
+          SELECT 1
+          FROM course_audiences ca
+          WHERE ca.course_id = c.id
+            AND (UPPER(ca.branch) = $${values.length - 4} OR UPPER(ca.branch) = 'ALL')
+            AND (ca.semester = $${values.length - 3} OR ca.semester = 0)
+            AND (UPPER(ca.section) = $${values.length - 2} OR UPPER(ca.section) = 'ALL')
+            AND (ca.batch = $${values.length - 1} OR ca.batch = 'ALL')
+        )
+        OR
+        NOT EXISTS (
+          SELECT 1
+          FROM course_audiences ca
+          WHERE ca.course_id = c.id
+        )
       )`
     );
   }

@@ -16,7 +16,10 @@ import {
   createAssignment,
   listAssignmentsForCourse,
   updateAssignment,
-  deleteAssignment
+  deleteAssignment,
+  addAssignmentQuestion,
+  updateAssignmentQuestion,
+  deleteAssignmentQuestion
 } from "../controllers/assignment.controller.js";
 import {
   attachRoleProfile,
@@ -34,7 +37,7 @@ courseRouter.use(requireAuth, requireMongoUser, attachRoleProfile);
 
 courseRouter.get("/filters", requireRole("admin"), getCourseFilters);
 courseRouter.get("/", listCourses);
-courseRouter.post("/", requireRole("admin"), createCourse);
+courseRouter.post("/", requireRole("admin", "faculty"), createCourse);
 courseRouter.get("/:courseId", requireCourseAccess, validateStudentCourseAccess, getCourseById);
 courseRouter.put("/:courseId", requireRole("admin"), updateCourse);
 courseRouter.delete("/:courseId", requireRole("admin"), deleteCourse);
@@ -43,6 +46,9 @@ courseRouter.get("/:courseId/assignments", requireCourseAccess, validateStudentC
 courseRouter.post("/:courseId/assignments", requireCourseManagementAccess, createAssignment);
 courseRouter.put("/:courseId/assignments/:assignmentId", requireCourseManagementAccess, updateAssignment);
 courseRouter.delete("/:courseId/assignments/:assignmentId", requireCourseManagementAccess, deleteAssignment);
+courseRouter.post("/:courseId/assignments/:assignmentId/questions", requireCourseManagementAccess, addAssignmentQuestion);
+courseRouter.put("/:courseId/assignments/:assignmentId/questions/:questionId", requireCourseManagementAccess, updateAssignmentQuestion);
+courseRouter.delete("/:courseId/assignments/:assignmentId/questions/:questionId", requireCourseManagementAccess, deleteAssignmentQuestion);
 courseRouter.post("/:courseId/materials", requireCourseManagementAccess, addCourseMaterial);
 courseRouter.post("/:courseId/coding-problems", requireCourseManagementAccess, addCourseCodingProblem);
 courseRouter.post("/:courseId/coding-problems/:problemId/run", requireCourseAccess, validateStudentCourseAccess, runCourseCodingProblem);

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import AccountSection from "../../components/AccountSection";
 import StudentProgressAnalytics from "../../components/StudentProgressAnalytics";
 import { PlatformLayout } from "../../components/PlatformLayout";
-import { getAdminSession, getAuthHeaders, saveAdminSession } from "../../utils/session";
+import { getAdminSession, getAuthHeaders } from "../../utils/session";
 import { apiRequest } from "../../utils/api";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || "https://codexa-project.onrender.com/api";
@@ -309,25 +308,6 @@ export default function AdminDashboard() {
         <StudentProgressAnalytics role="admin" session={session} />
       )}
 
-      {/* Profile Management Section */}
-      {activeTab === "overview" && (
-        <section className="platform-section-card" style={{ marginTop: "1rem" }}>
-          <div className="platform-section-head">
-            <div>
-              <p className="platform-section-label">Account settings</p>
-              <h2>Admin Profile Settings</h2>
-            </div>
-          </div>
-          <AccountSection
-            role="admin"
-            session={session}
-            saveSession={(nextSession) => {
-              saveAdminSession(nextSession);
-              setSession(nextSession);
-            }}
-          />
-        </section>
-      )}
     </PlatformLayout>
   );
 }

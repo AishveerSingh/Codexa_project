@@ -14,7 +14,7 @@ const initialStudentForm = {
   branch: "CSE",
   semester: "1",
   section: "A",
-  batch: "2023-2027"
+  batch: ""
 };
 
 const initialFacultyForm = {
@@ -253,14 +253,15 @@ export default function AdminAddUser() {
         label={selectedRole.toUpperCase()}
         title={`Enter ${selectedRole === "student" ? "Student" : selectedRole === "faculty" ? "Faculty" : "Administrator"} Details`}
       >
-        <form className="auth-form course-form-grid" onSubmit={handleSubmit}>
+        <form className="auth-form course-form-grid" onSubmit={handleSubmit} autoComplete="off">
           {/* COMMON FIELDS */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
             <div>
               <label className="platform-field-label">Full Name *</label>
               <input
-                placeholder="e.g. Aishveer Singh"
+                placeholder="Enter full name (e.g. Alex Morgan)"
                 required
+                autoComplete="off"
                 value={
                   selectedRole === "student"
                     ? studentForm.fullName
@@ -289,6 +290,7 @@ export default function AdminAddUser() {
                 }
                 required
                 type="email"
+                autoComplete="off"
                 value={
                   selectedRole === "student"
                     ? studentForm.email
@@ -312,6 +314,7 @@ export default function AdminAddUser() {
                 required
                 minLength={6}
                 type="password"
+                autoComplete="new-password"
                 value={
                   selectedRole === "student"
                     ? studentForm.password
@@ -337,6 +340,7 @@ export default function AdminAddUser() {
                 <input
                   placeholder="e.g. 21CSE045"
                   required
+                  autoComplete="off"
                   value={studentForm.rollNumber}
                   onChange={(e) => setStudentForm((c) => ({ ...c, rollNumber: e.target.value }))}
                 />
@@ -345,6 +349,8 @@ export default function AdminAddUser() {
               <div>
                 <label className="platform-field-label">Branch *</label>
                 <select
+                  className="roster-filter-select"
+                  style={{ width: "100%" }}
                   value={studentForm.branch}
                   onChange={(e) => setStudentForm((c) => ({ ...c, branch: e.target.value }))}
                 >
@@ -360,6 +366,8 @@ export default function AdminAddUser() {
               <div>
                 <label className="platform-field-label">Semester *</label>
                 <select
+                  className="roster-filter-select"
+                  style={{ width: "100%" }}
                   value={studentForm.semester}
                   onChange={(e) => setStudentForm((c) => ({ ...c, semester: e.target.value }))}
                 >
@@ -372,10 +380,12 @@ export default function AdminAddUser() {
               <div>
                 <label className="platform-field-label">Section *</label>
                 <select
+                  className="roster-filter-select"
+                  style={{ width: "100%" }}
                   value={studentForm.section}
                   onChange={(e) => setStudentForm((c) => ({ ...c, section: e.target.value }))}
                 >
-                  {["A", "B", "C", "D"].map((sec) => (
+                  {["A", "B", "C", "D", "E"].map((sec) => (
                     <option key={sec} value={sec}>Section {sec}</option>
                   ))}
                 </select>
@@ -386,6 +396,7 @@ export default function AdminAddUser() {
                 <input
                   placeholder="e.g. 2023-2027"
                   required
+                  autoComplete="off"
                   value={studentForm.batch}
                   onChange={(e) => setStudentForm((c) => ({ ...c, batch: e.target.value }))}
                 />
@@ -401,6 +412,7 @@ export default function AdminAddUser() {
                 <input
                   placeholder="e.g. EMP-104"
                   required
+                  autoComplete="off"
                   value={facultyForm.employeeId}
                   onChange={(e) => setFacultyForm((c) => ({ ...c, employeeId: e.target.value }))}
                 />
@@ -409,6 +421,8 @@ export default function AdminAddUser() {
               <div>
                 <label className="platform-field-label">Department *</label>
                 <select
+                  className="roster-filter-select"
+                  style={{ width: "100%" }}
                   value={facultyForm.department}
                   onChange={(e) => setFacultyForm((c) => ({ ...c, department: e.target.value }))}
                 >
@@ -425,6 +439,8 @@ export default function AdminAddUser() {
               <div>
                 <label className="platform-field-label">Designation *</label>
                 <select
+                  className="roster-filter-select"
+                  style={{ width: "100%" }}
                   value={facultyForm.designation}
                   onChange={(e) => setFacultyForm((c) => ({ ...c, designation: e.target.value }))}
                 >

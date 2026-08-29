@@ -523,9 +523,11 @@ export default function StudentProblemDetails() {
   const { problemId } = useParams();
   const { theme, toggleTheme } = useTheme();
   const isDarkTheme = theme === "dark";
-  const session = getStudentSession() || getFacultySession() || getAdminSession();
+  const isFaculty = window.location.pathname.startsWith("/faculty");
+  const isAdmin = window.location.pathname.startsWith("/admin");
+  const userRole = isFaculty ? "faculty" : isAdmin ? "admin" : "student";
+  const session = isFaculty ? getFacultySession() : isAdmin ? getAdminSession() : getStudentSession();
   const student = session?.user;
-  const userRole = student?.role || "student";
   const buttonClass = userRole === "admin" ? "admin-button" : "student-button";
   const backToProblemsPath = userRole === "admin" ? "/admin/problems" : userRole === "faculty" ? "/faculty/problems" : "/student/problems";
   const backToDashboardPath = `/${userRole}/dashboard`;

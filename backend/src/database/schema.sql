@@ -189,7 +189,10 @@ CREATE TABLE IF NOT EXISTS course_assignments (
 ALTER TABLE course_assignments
 ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS time_limit_minutes INTEGER,
-ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'published';
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'published',
+ADD COLUMN IF NOT EXISTS target_batch VARCHAR(100) DEFAULT 'ALL',
+ADD COLUMN IF NOT EXISTS target_year VARCHAR(50) DEFAULT 'ALL',
+ADD COLUMN IF NOT EXISTS target_semester VARCHAR(50) DEFAULT 'ALL';
 
 ALTER TABLE course_assignments DROP CONSTRAINT IF EXISTS course_assignments_assignment_type_check;
 ALTER TABLE course_assignments ADD CONSTRAINT course_assignments_assignment_type_check CHECK (assignment_type IN ('coding', 'theory', 'mst', 'quiz', 'assignment'));

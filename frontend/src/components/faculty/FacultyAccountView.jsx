@@ -138,14 +138,14 @@ export default function FacultyAccountView({ user }) {
               <span>
                 <Briefcase size={14} style={{ display: "inline" }} /> Employee ID:{" "}
                 <strong style={{ color: "#fff" }}>
-                  {profile.employee_id || profile.employeeId || "EMP-2026-88"}
+                  {profile.employee_id || profile.employeeId || "Not assigned"}
                 </strong>
               </span>
               <span>
-                <Mail size={14} style={{ display: "inline" }} /> {currentUser?.email || "akshay.girdhar@codexa.edu"}
+                <Mail size={14} style={{ display: "inline" }} /> {currentUser?.email || "N/A"}
               </span>
               <span>
-                <MapPin size={14} style={{ display: "inline" }} /> Office: Block C, Room 304
+                <MapPin size={14} style={{ display: "inline" }} /> Department: {profile.department || "Academic Department"}
               </span>
             </div>
           </div>

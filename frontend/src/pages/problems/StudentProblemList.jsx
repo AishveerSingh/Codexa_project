@@ -5,12 +5,10 @@ import { apiRequest } from "../../utils/api";
 import { getStudentSession, getFacultySession, getAdminSession } from "../../utils/session";
 
 export default function StudentProblemList() {
-  const session = window.location.pathname.startsWith("/faculty")
-    ? getFacultySession() || getStudentSession() || getAdminSession()
-    : window.location.pathname.startsWith("/admin")
-    ? getAdminSession() || getFacultySession() || getStudentSession()
-    : getStudentSession() || getFacultySession() || getAdminSession();
-  const userRole = session?.user?.role || (window.location.pathname.startsWith("/faculty") ? "faculty" : window.location.pathname.startsWith("/admin") ? "admin" : "student");
+  const isFaculty = window.location.pathname.startsWith("/faculty");
+  const isAdmin = window.location.pathname.startsWith("/admin");
+  const userRole = isFaculty ? "faculty" : isAdmin ? "admin" : "student";
+  const session = isFaculty ? getFacultySession() : isAdmin ? getAdminSession() : getStudentSession();
   const buttonClass = userRole === "admin" ? "admin-button" : "student-button";
   const backToDashboardPath = `/${userRole}/dashboard`;
 

@@ -29,13 +29,15 @@ export default function FacultyDashboardOverview({ onQuickAction, onNavigateTab 
   const [activeChartTab, setActiveChartTab] = useState("performance");
 
   const [metrics, setMetrics] = useState({
-    coursesCount: 6,
-    studentsCount: 248,
-    assignmentsCount: 18,
-    evaluationsCount: 32,
-    problemsCount: 142,
-    avgPerformance: "84.5%"
+    coursesCount: 0,
+    studentsCount: 0,
+    assignmentsCount: 0,
+    evaluationsCount: 0,
+    problemsCount: 0,
+    avgPerformance: "0%"
   });
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,28 +45,84 @@ export default function FacultyDashboardOverview({ onQuickAction, onNavigateTab 
     async function fetchDashboardMetrics() {
       if (!token) return;
       try {
-        const [coursesRes, studentsRes, problemsRes] = await Promise.allSettled([
+        const [coursesRes, studentsRes, problemsRes, subsRes, analyticsRes] = await Promise.allSettled([
           apiRequest("/courses", {}, token),
           apiRequest("/users/students/accessible", {}, token),
-          apiRequest("/problems", {}, token)
+          apiRequest("/problems", {}, token),
+          apiRequest("/submissions", {}, token),
+          apiRequest("/analytics/faculty", {}, token)
         ]);
 
         if (isMounted) {
           const courses = coursesRes.status === "fulfilled" && Array.isArray(coursesRes.value) ? coursesRes.value : [];
           const students = studentsRes.status === "fulfilled" && Array.isArray(studentsRes.value) ? studentsRes.value : [];
           const problems = problemsRes.status === "fulfilled" && Array.isArray(problemsRes.value) ? problemsRes.value : [];
+          const submissions = subsRes.status === "fulfilled" && Array.isArray(subsRes.value) ? subsRes.value : [];
+          const analytics = analyticsRes.status === "fulfilled" ? analyticsRes.value : null;
+
+          let totalAssignments = 0;
+          courses.forEach((c) => {
+            totalAssignments += (c.assignments_count || c.assignmentsCount || 0);
+          });
+
+          const accRate = analytics?.overview?.acceptanceRate ?? (submissions.length > 0 ? Math.round((submissions.filter(s => s.status === 'accepted').length / submissions.length) * 100) : 0);
 
           setMetrics({
-            coursesCount: courses.length || 6,
-            studentsCount: students.length || 248,
-            assignmentsCount: 18,
-            evaluationsCount: 32,
-            problemsCount: problems.length || 142,
-            avgPerformance: "84.5%"
+            coursesCount: courses.length,
+            studentsCount: students.length,
+            assignmentsCount: totalAssignments,
+            evaluationsCount: submissions.filter(s => s.status !== 'accepted').length,
+            problemsCount: problems.length,
+            avgPerformance: `${accRate}%`
           });
+
+          if (submissions.length > 0) {
+            setRecentActivities(
+              submissions.slice(0, 5).map((sub, idx) => ({
+                id: sub.id || idx,
+                title: sub.status === "accepted" ? "Solution Accepted" : "Problem Submission",
+                meta: `${sub.student_name || "Student"} submitted '${sub.problem_title || "Problem"}' (${sub.language?.toUpperCase() || "Code"})`,
+                time: sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : "Recently",
+                icon: sub.status === "accepted" ? CheckCircle2 : Code2,
+                color: sub.status === "accepted" ? "#10B981" : "#EC4899"
+              }))
+            );
+          } else {
+            setRecentActivities([]);
+          }
+
+          // Fetch upcoming assignments for courses
+          const events = [];
+          for (const c of courses.slice(0, 3)) {
+            if (c.id) {
+              try {
+                const asgs = await apiRequest(`/courses/${c.id}/assignments`, {}, token);
+                if (Array.isArray(asgs)) {
+                  asgs.forEach(a => {
+                    const due = a.due_date ? new Date(a.due_date) : null;
+                    if (due) {
+                      events.push({
+                        id: a.id,
+                        title: a.title,
+                        subtitle: `${c.code || c.name} • Due Date`,
+                        date: String(due.getDate()).padStart(2, "0"),
+                        month: due.toLocaleString("en-US", { month: "short" }).toUpperCase(),
+                        time: due.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                        badge: "Due",
+                        badgeClass: "fd-badge-warning"
+                      });
+                    }
+                  });
+                }
+              } catch {
+                // Ignore course assignment lookup failure
+              }
+            }
+          }
+          if (isMounted) setUpcomingEvents(events.slice(0, 5));
         }
       } catch (_err) {
-        // Fallback to baseline
+        // Handle gracefully
       }
     }
 
@@ -188,84 +246,6 @@ export default function FacultyDashboardOverview({ onQuickAction, onNavigateTab 
       icon: Trophy,
       gradient: "rgba(139, 92, 246, 0.15)",
       iconColor: "#A78BFA"
-    }
-  ];
-
-  // Recent Activity Feed
-  const recentActivities = [
-    {
-      id: 1,
-      title: "Recent Assignment Submitted",
-      meta: "Rahul Sharma submitted 'Dynamic Programming & Knapsack' (CS-301)",
-      time: "8 mins ago",
-      icon: CheckCircle2,
-      color: "#10B981"
-    },
-    {
-      id: 2,
-      title: "Student Joined Course",
-      meta: "Anya Gupta enrolled in 'Full-Stack Web Engineering' (IT-402)",
-      time: "24 mins ago",
-      icon: UserPlus,
-      color: "#0EA5E9"
-    },
-    {
-      id: 3,
-      title: "Contest Created",
-      meta: "Published 'Codexa Hackathon Spring '26' with 5 coding problems",
-      time: "1 hour ago",
-      icon: Trophy,
-      color: "#6366F1"
-    },
-    {
-      id: 4,
-      title: "Problem Published",
-      meta: "Created new Hard problem 'Graph Shortest Path with K Stops'",
-      time: "3 hours ago",
-      icon: Code2,
-      color: "#EC4899"
-    },
-    {
-      id: 5,
-      title: "Assignment Deadline Updated",
-      meta: "Extended submission deadline for CS-201 Data Structures by 2 days",
-      time: "5 hours ago",
-      icon: Zap,
-      color: "#F59E0B"
-    }
-  ];
-
-  // Upcoming Schedule / Events
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: "CS-301: Advanced Algorithms Lecture",
-      subtitle: "Topic: Graph Traversals & Topological Sorting",
-      date: "07",
-      month: "AUG",
-      time: "02:00 PM - 03:30 PM",
-      badge: "Today",
-      badgeClass: "fd-badge-success"
-    },
-    {
-      id: 2,
-      title: "Binary Trees Assignment Deadline",
-      subtitle: "248 enrolled students due",
-      date: "08",
-      month: "AUG",
-      time: "11:59 PM",
-      badge: "Tomorrow",
-      badgeClass: "fd-badge-warning"
-    },
-    {
-      id: 3,
-      title: "Codexa Bi-Weekly Sprint Contest",
-      subtitle: "Timed contest with automated evaluation",
-      date: "10",
-      month: "AUG",
-      time: "06:00 PM - 09:00 PM",
-      badge: "Upcoming",
-      badgeClass: "fd-badge-primary"
     }
   ];
 
@@ -565,36 +545,42 @@ export default function FacultyDashboardOverview({ onQuickAction, onNavigateTab 
           <p className="fd-section-subtitle">Real-time student & course events</p>
 
           <div className="fd-timeline">
-            {recentActivities.map((act) => {
-              const AIcon = act.icon;
-              return (
-                <div key={act.id} className="fd-timeline-item">
-                  <div
-                    className="fd-timeline-icon"
-                    style={{
-                      background: act.color + "18",
-                      color: act.color,
-                      borderColor: act.color
-                    }}
-                  >
-                    <AIcon size={16} />
-                  </div>
-                  <div className="fd-timeline-content">
+            {recentActivities.length === 0 ? (
+              <div style={{ padding: "2rem 1rem", textAlign: "center", color: "#A5B4C3", fontSize: "0.88rem" }}>
+                No recent activity recorded in database.
+              </div>
+            ) : (
+              recentActivities.map((act) => {
+                const AIcon = act.icon;
+                return (
+                  <div key={act.id} className="fd-timeline-item">
                     <div
+                      className="fd-timeline-icon"
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between"
+                        background: act.color + "18",
+                        color: act.color,
+                        borderColor: act.color
                       }}
                     >
-                      <h4 className="fd-timeline-title">{act.title}</h4>
-                      <span className="fd-timeline-time">{act.time}</span>
+                      <AIcon size={16} />
                     </div>
-                    <p className="fd-timeline-meta">{act.meta}</p>
+                    <div className="fd-timeline-content">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between"
+                        }}
+                      >
+                        <h4 className="fd-timeline-title">{act.title}</h4>
+                        <span className="fd-timeline-time">{act.time}</span>
+                      </div>
+                      <p className="fd-timeline-meta">{act.meta}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -604,26 +590,32 @@ export default function FacultyDashboardOverview({ onQuickAction, onNavigateTab 
             <Calendar size={20} style={{ color: "#0EA5E9" }} />
             Upcoming Events & Schedule
           </h2>
-          <p className="fd-section-subtitle">Today's classes, deadlines & contests</p>
+          <p className="fd-section-subtitle">Active assignment deadlines & schedule</p>
 
           <div className="fd-events-list">
-            {upcomingEvents.map((event) => (
-              <div key={event.id} className="fd-event-card">
-                <div className="fd-event-date-box">
-                  <div className="fd-event-date-day">{event.date}</div>
-                  <div className="fd-event-date-month">{event.month}</div>
-                </div>
-                <div className="fd-event-info">
-                  <h4 className="fd-event-title">{event.title}</h4>
-                  <p className="fd-event-subtitle">
-                    {event.subtitle} • {event.time}
-                  </p>
-                </div>
-                <span className={`fd-event-badge ${event.badgeClass}`}>
-                  {event.badge}
-                </span>
+            {upcomingEvents.length === 0 ? (
+              <div style={{ padding: "2rem 1rem", textAlign: "center", color: "#A5B4C3", fontSize: "0.88rem" }}>
+                No upcoming deadlines or scheduled events.
               </div>
-            ))}
+            ) : (
+              upcomingEvents.map((event) => (
+                <div key={event.id} className="fd-event-card">
+                  <div className="fd-event-date-box">
+                    <div className="fd-event-date-day">{event.date}</div>
+                    <div className="fd-event-date-month">{event.month}</div>
+                  </div>
+                  <div className="fd-event-info">
+                    <h4 className="fd-event-title">{event.title}</h4>
+                    <p className="fd-event-subtitle">
+                      {event.subtitle} • {event.time}
+                    </p>
+                  </div>
+                  <span className={`fd-event-badge ${event.badgeClass}`}>
+                    {event.badge}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

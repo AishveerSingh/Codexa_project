@@ -876,15 +876,46 @@ export default function StudentAccountPage() {
       </div>
 
       {isEditModalOpen ? (
-        <div className="sap-modal-overlay">
-          <div className="sap-modal-card">
+        <div 
+          className="sap-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsEditModalOpen(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 99999,
+            padding: "1.5rem"
+          }}
+        >
+          <div 
+            className="sap-modal-card"
+            style={{
+              background: "#161b26",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              borderRadius: "20px",
+              padding: "2rem",
+              width: "min(560px, 100%)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 25px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08)",
+              color: "#ffffff",
+              position: "relative",
+              zIndex: 100000
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
               <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800 }}>Edit Profile Information</h3>
               <button
+                type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
+                style={{ background: "rgba(255, 255, 255, 0.06)", border: "none", color: "#94a3b8", cursor: "pointer", borderRadius: "8px", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -1087,15 +1118,44 @@ export default function StudentAccountPage() {
       ) : null}
 
       {isPasswordModalOpen ? (
-        <div className="sap-modal-overlay">
-          <div className="sap-modal-card">
+        <div 
+          className="sap-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsPasswordModalOpen(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 99999,
+            padding: "1.5rem"
+          }}
+        >
+          <div 
+            className="sap-modal-card"
+            style={{
+              background: "#161b26",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              borderRadius: "20px",
+              padding: "2rem",
+              width: "min(500px, 100%)",
+              boxShadow: "0 25px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08)",
+              color: "#ffffff",
+              position: "relative",
+              zIndex: 100000
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
               <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800 }}>Change Sign-in Password</h3>
               <button
+                type="button"
                 onClick={() => setIsPasswordModalOpen(false)}
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
+                style={{ background: "rgba(255, 255, 255, 0.06)", border: "none", color: "#94a3b8", cursor: "pointer", borderRadius: "8px", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 

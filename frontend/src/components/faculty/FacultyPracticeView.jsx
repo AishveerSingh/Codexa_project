@@ -63,16 +63,16 @@ export default function FacultyPracticeView({ onQuickAction }) {
           if (loadedProblems.length > 0) {
             setProblemsList(
               loadedProblems.map((p) => ({
-                id: p.id || p._id || `PROB-${p.id}`,
-                title: p.title || "Coding Challenge",
-                difficulty: p.difficulty || "Medium",
+                id: p.id || p._id,
+                title: p.title || "Algorithm Challenge",
+                difficulty: (p.difficulty || "medium").charAt(0).toUpperCase() + (p.difficulty || "medium").slice(1),
                 diffClass:
-                  p.difficulty === "Easy"
+                  p.difficulty === "easy"
                     ? "fd-badge-success"
-                    : p.difficulty === "Hard"
+                    : p.difficulty === "hard"
                     ? "fd-badge-danger"
                     : "fd-badge-warning",
-                acceptance: p.acceptance_rate || "64.2%",
+                acceptance: p.acceptance_rate || "N/A",
                 tags: Array.isArray(p.tags) ? p.tags : [p.topic || "Algorithm"],
                 timeLimit: p.time_limit || "1.0s",
                 memoryLimit: p.memory_limit || "256MB",
@@ -81,101 +81,49 @@ export default function FacultyPracticeView({ onQuickAction }) {
               }))
             );
           } else {
-            // Default actual structure if problem table is newly initialized
-            setProblemsList([
-              {
-                id: "PROB-101",
-                title: "Binary Tree Maximum Path Sum",
-                difficulty: "Hard",
-                diffClass: "fd-badge-danger",
-                acceptance: "48.2%",
-                tags: ["Trees", "DFS", "Dynamic Programming"],
-                timeLimit: "1.0s",
-                memoryLimit: "256MB",
-                languages: ["C++", "Java", "Python", "JS"],
-                status: "Published"
-              },
-              {
-                id: "PROB-102",
-                title: "Longest Increasing Subsequence",
-                difficulty: "Medium",
-                diffClass: "fd-badge-warning",
-                acceptance: "62.4%",
-                tags: ["Array", "Dynamic Programming", "Binary Search"],
-                timeLimit: "1.0s",
-                memoryLimit: "256MB",
-                languages: ["C++", "Java", "Python", "Go"],
-                status: "Published"
-              },
-              {
-                id: "PROB-103",
-                title: "Valid Parentheses & Expression Stack",
-                difficulty: "Easy",
-                diffClass: "fd-badge-success",
-                acceptance: "85.1%",
-                tags: ["Stack", "String"],
-                timeLimit: "0.5s",
-                memoryLimit: "128MB",
-                languages: ["C++", "Java", "Python", "JS", "C#"],
-                status: "Published"
-              }
-            ]);
+            setProblemsList([]);
           }
           setLoading(false);
         }
       } catch (err) {
         if (isMounted) {
-          setError(err.message || "Loaded problem structure");
+          setError(err.message || "Failed to load problems");
           setLoading(false);
         }
       }
     }
 
+    async function fetchRealSubmissions() {
+      try {
+        const data = await apiRequest("/submissions", {}, token);
+        if (isMounted && Array.isArray(data)) {
+          setSubmissionsList(
+            data.map((sub) => ({
+              id: sub.id ? `SUB-${sub.id.substring(0, 6)}` : "SUB-REC",
+              student: sub.student_name || "Student",
+              problem: sub.problem_title || "Coding Challenge",
+              status: sub.status === "accepted" ? "Accepted" : sub.status === "wrong_answer" ? "Wrong Answer" : sub.status === "time_limit" ? "Time Limit" : (sub.status || "Evaluated"),
+              statusBadge: sub.status === "accepted" ? "fd-badge-success" : sub.status === "wrong_answer" ? "fd-badge-danger" : "fd-badge-warning",
+              runtime: sub.execution_time_ms ? `${sub.execution_time_ms} ms` : "0 ms",
+              memory: sub.memory_kb ? `${(sub.memory_kb / 1024).toFixed(1)} MB` : "N/A",
+              language: sub.language?.toUpperCase() || "C++",
+              plagiarismScore: 0,
+              time: sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : "Recently"
+            }))
+          );
+        }
+      } catch (e) {
+        console.warn("Submissions notice:", e.message);
+      }
+    }
+
     fetchRealProblems();
+    fetchRealSubmissions();
 
     return () => {
       isMounted = false;
     };
   }, [token]);
-
-  const submissionsList = [
-    {
-      id: "SUB-8801",
-      student: "Rahul Sharma",
-      problem: "Binary Tree Maximum Path Sum",
-      status: "Accepted",
-      statusBadge: "fd-badge-success",
-      runtime: "18 ms",
-      memory: "14.2 MB",
-      language: "C++ 20",
-      plagiarismScore: 2.1,
-      time: "10 mins ago"
-    },
-    {
-      id: "SUB-8802",
-      student: "Vikram Malhotra",
-      problem: "Longest Increasing Subsequence",
-      status: "Wrong Answer",
-      statusBadge: "fd-badge-danger",
-      runtime: "42 ms",
-      memory: "18.6 MB",
-      language: "Python 3",
-      plagiarismScore: 1.4,
-      time: "25 mins ago"
-    },
-    {
-      id: "SUB-8803",
-      student: "Rohan Verma",
-      problem: "Graph Shortest Path with K Stops",
-      status: "Time Limit Exceeded",
-      statusBadge: "fd-badge-warning",
-      runtime: "2000 ms",
-      memory: "64.0 MB",
-      language: "Java 17",
-      plagiarismScore: 18.5,
-      time: "45 mins ago"
-    }
-  ];
 
   const filteredProblems = problemsList.filter((prob) => {
     const matchesSearch = prob.title

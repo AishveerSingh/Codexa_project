@@ -52,63 +52,19 @@ export default function FacultyCoursesView({ onQuickAction }) {
                 id: c.id || c._id,
                 name: c.name || c.title || "Academic Course",
                 code: c.code || `CS-${c.id?.substring(0, 3)}`,
-                department: c.department || "Computer Science",
-                semester: c.semester || "5th Semester",
+                department: c.department || (c.audiences && c.audiences[0]?.branch) || "Computer Science",
+                semester: c.semester || (c.audiences && c.audiences[0]?.semester ? `Semester ${c.audiences[0].semester}` : "All Semesters"),
                 faculty: c.faculty?.name || c.faculty_name || session?.user?.fullName || "Faculty",
                 studentsEnrolled: c.students?.length || c.enrolled_count || c.studentsEnrolled || 0,
-                progress: c.progress || 75,
+                progress: c.progress || 0,
                 assignmentsCount: c.assignments_count || c.assignmentsCount || 0,
                 codingProblems: c.coding_problems_count || c.codingProblems || 0,
-                attendancePct: c.attendance_pct || 90,
-                status: c.status || "Active"
+                attendancePct: c.attendance_pct || 0,
+                status: c.status || (c.is_active !== false ? "Active" : "Archived")
               }))
             );
           } else {
-            // Default actual structure if backend course table is newly initialized
-            setCoursesList([
-              {
-                id: "cs-301",
-                name: "Advanced Data Structures & Algorithms",
-                code: "CS-301",
-                department: "Computer Science",
-                semester: "5th Semester",
-                faculty: session?.user?.fullName || "Prof. Akshay Girdhar",
-                studentsEnrolled: 64,
-                progress: 78,
-                assignmentsCount: 12,
-                codingProblems: 45,
-                attendancePct: 92,
-                status: "Active"
-              },
-              {
-                id: "it-402",
-                name: "Full-Stack Web Engineering",
-                code: "IT-402",
-                department: "Information Technology",
-                semester: "6th Semester",
-                faculty: session?.user?.fullName || "Prof. Akshay Girdhar",
-                studentsEnrolled: 58,
-                progress: 85,
-                assignmentsCount: 10,
-                codingProblems: 32,
-                attendancePct: 88,
-                status: "Active"
-              },
-              {
-                id: "cs-201",
-                name: "Object-Oriented Programming in C++",
-                code: "CS-201",
-                department: "Computer Science",
-                semester: "3rd Semester",
-                faculty: session?.user?.fullName || "Prof. Akshay Girdhar",
-                studentsEnrolled: 72,
-                progress: 90,
-                assignmentsCount: 15,
-                codingProblems: 50,
-                attendancePct: 95,
-                status: "Active"
-              }
-            ]);
+            setCoursesList([]);
           }
           setLoading(false);
         }

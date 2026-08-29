@@ -96,6 +96,8 @@ export default function StudentExamsPage() {
                 endTime: end ? end.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "TBA",
                 durationMinutes: item.durationMinutes || 90,
                 totalMarks: item.maxScore || 100,
+                targetBatch: item.targetBatch || item.target_batch || "ALL",
+                targetYear: item.targetYear || item.target_year || "ALL",
                 score: submission?.grade ?? null,
                 submittedAt: submission?.submittedAt ? new Date(submission.submittedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : null,
                 proctored: item.isProctored !== undefined ? item.isProctored : true,
@@ -213,6 +215,9 @@ export default function StudentExamsPage() {
             ← Exit Exam Workspace
           </button>
           <CourseAssessmentWorkspace
+            assignmentId={activeExam.id}
+            courseId={activeExam.courseId}
+            exam={activeExam}
             courseTitle={`${activeExam.courseCode}: ${activeExam.courseTitle}`}
             assignmentTitle={activeExam.title}
             dueDate={activeExam.endTime}
@@ -500,9 +505,40 @@ export default function StudentExamsPage() {
                     <h3 style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--lc-text-primary)", marginBottom: "0.35rem" }}>
                       {exam.title}
                     </h3>
-                    <p style={{ fontSize: "0.85rem", color: "var(--lc-text-muted)", marginBottom: "1.25rem" }}>
+                    <p style={{ fontSize: "0.85rem", color: "var(--lc-text-muted)", marginBottom: "0.75rem" }}>
                       {exam.courseTitle} • {exam.instructor}
                     </p>
+
+                    {(exam.targetBatch !== "ALL" || exam.targetYear !== "ALL") && (
+                      <div style={{ display: "flex", gap: "0.4rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+                        {exam.targetBatch !== "ALL" && (
+                          <span style={{
+                            fontSize: "0.7rem",
+                            background: "rgba(147, 51, 234, 0.15)",
+                            color: "#c084fc",
+                            border: "1px solid rgba(147, 51, 234, 0.3)",
+                            padding: "0.15rem 0.5rem",
+                            borderRadius: "6px",
+                            fontWeight: 600
+                          }}>
+                            🎓 Batch {exam.targetBatch}
+                          </span>
+                        )}
+                        {exam.targetYear !== "ALL" && (
+                          <span style={{
+                            fontSize: "0.7rem",
+                            background: "rgba(59, 130, 246, 0.15)",
+                            color: "#93c5fd",
+                            border: "1px solid rgba(59, 130, 246, 0.3)",
+                            padding: "0.15rem 0.5rem",
+                            borderRadius: "6px",
+                            fontWeight: 600
+                          }}>
+                            📅 {exam.targetYear}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Timing details */}
                     <div style={{

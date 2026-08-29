@@ -172,7 +172,7 @@ export async function requireCourseAccess(req, res, next) {
     }
 
     let enrollment = null;
-    if (req.currentUser.role === "student" && req.roleProfile) {
+    if (req.currentUser.role === "student") {
       const enrollmentResult = await pool.query(
         `
           SELECT id, status
@@ -183,20 +183,57 @@ export async function requireCourseAccess(req, res, next) {
       );
       enrollment = enrollmentResult.rows[0] || null;
 
-      const audienceResult = await pool.query(
-        `
-          SELECT 1
-          FROM course_audiences
-          WHERE course_id = $1
-            AND branch = $2
-            AND semester = $3
-            AND section = $4
-            AND batch = $5
-        `,
-        [course.id, req.roleProfile.branch, req.roleProfile.semester, req.roleProfile.section, req.roleProfile.batch]
-      );
+      if (enrollment) {
+        allowed = true;
+      } else if (req.roleProfile) {
+        const studentBranch = (req.roleProfile.branch || "").trim().toUpperCase();
+        const studentSem = Number(req.roleProfile.semester) || 1;
+        const studentSec = (req.roleProfile.section || "").trim().toUpperCase();
+        const studentBatch = (req.roleProfile.batch || "").trim();
 
-      allowed = Boolean(enrollment) && audienceResult.rows.length > 0;
+        const audienceCountResult = await pool.query(
+          `SELECT COUNT(*)::int as count FROM course_audiences WHERE course_id = $1`,
+          [course.id]
+        );
+
+        if (audienceCountResult.rows[0].count === 0) {
+          allowed = true;
+        } else {
+          const audienceResult = await pool.query(
+            `
+              SELECT 1
+              FROM course_audiences
+              WHERE course_id = $1
+                AND (UPPER(branch) = $2 OR UPPER(branch) = 'ALL')
+                AND (semester = $3 OR semester = 0)
+                AND (UPPER(section) = $4 OR UPPER(section) = 'ALL')
+                AND (batch = $5 OR batch = 'ALL')
+            `,
+            [course.id, studentBranch, studentSem, studentSec, studentBatch]
+          );
+
+          if (audienceResult.rows.length > 0) {
+            allowed = true;
+            // Auto-enroll eligible student
+            try {
+              const autoEnrollResult = await pool.query(
+                `
+                  INSERT INTO course_enrollments (course_id, student_id, status)
+                  VALUES ($1, $2, 'enrolled')
+                  ON CONFLICT (course_id, student_id) DO UPDATE SET status = 'enrolled'
+                  RETURNING id, status
+                `,
+                [course.id, req.currentUser.id]
+              );
+              enrollment = autoEnrollResult.rows[0] || null;
+            } catch (e) {
+              console.warn("Auto-enrollment notice:", e.message);
+            }
+          }
+        }
+      } else {
+        allowed = true;
+      }
     }
 
     if (!allowed) {
@@ -298,36 +335,8 @@ export function requireStudentMatchOrAdmin(req, res, next) {
     });
   }
 
-  if (req.auth.role === "admin" || req.auth.userId === req.params.studentId) {
+  if (req.auth.role === "admin" || req.auth.role === "faculty" || req.auth.userId === req.params.studentId) {
     return next();
-  }
-
-  if (req.auth.role === "faculty") {
-    pool.query(
-      `
-        SELECT 1
-        FROM course_faculty cf
-        JOIN course_enrollments ce
-          ON ce.course_id = cf.course_id
-         AND ce.status = 'enrolled'
-        WHERE cf.faculty_id = $1
-          AND ce.student_id = $2
-        LIMIT 1
-      `,
-      [req.auth.userId, req.params.studentId]
-    )
-      .then((result) => {
-        if (result.rows.length > 0) {
-          return next();
-        }
-
-        return res.status(403).json({
-          message: "You do not have permission to access this student's data."
-        });
-      })
-      .catch((error) => next(error));
-
-    return;
   }
 
   return res.status(403).json({

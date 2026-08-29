@@ -876,3 +876,115 @@ export async function deleteUser(req, res, next) {
   }
 }
 
+export async function updateUserById(req, res, next) {
+  const { userId } = req.params;
+  const {
+    fullName,
+    email,
+    password,
+    rollNumber,
+    branch,
+    semester,
+    section,
+    batch,
+    employeeId,
+    department,
+    designation
+  } = req.body;
+
+  try {
+    const userRes = await pool.query(
+      `SELECT id, role, email, full_name FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const targetUser = userRes.rows[0];
+
+    // Check duplicate email if changed
+    if (email && email.trim().toLowerCase() !== targetUser.email.toLowerCase()) {
+      const dupCheck = await pool.query(
+        `SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND id != $2`,
+        [email.trim(), userId]
+      );
+      if (dupCheck.rows.length > 0) {
+        return res.status(409).json({ message: "This email is already in use by another account." });
+      }
+    }
+
+    const updatedName = fullName?.trim() || targetUser.full_name;
+    const updatedEmail = email?.trim()?.toLowerCase() || targetUser.email;
+
+    // Update password if provided
+    if (password && password.trim().length >= 8) {
+      const passwordHash = await hashPassword(password.trim());
+      await pool.query(
+        `UPDATE users SET full_name = $1, email = $2, password_hash = $3 WHERE id = $4`,
+        [updatedName, updatedEmail, passwordHash, userId]
+      );
+    } else {
+      await pool.query(
+        `UPDATE users SET full_name = $1, email = $2 WHERE id = $3`,
+        [updatedName, updatedEmail, userId]
+      );
+    }
+
+    // If Student: update student_profiles
+    if (targetUser.role === "student") {
+      await pool.query(
+        `
+        INSERT INTO student_profiles (user_id, roll_number, branch, semester, section, batch, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (user_id) DO UPDATE
+        SET roll_number = COALESCE(NULLIF($2, ''), student_profiles.roll_number),
+            branch = COALESCE(NULLIF($3, ''), student_profiles.branch),
+            semester = COALESCE($4, student_profiles.semester),
+            section = COALESCE(NULLIF($5, ''), student_profiles.section),
+            batch = COALESCE(NULLIF($6, ''), student_profiles.batch),
+            updated_at = NOW()
+        `,
+        [
+          userId,
+          rollNumber ? String(rollNumber).trim() : "",
+          branch ? String(branch).trim() : "",
+          semester ? parseInt(semester, 10) : null,
+          section ? String(section).trim() : "",
+          batch ? String(batch).trim() : ""
+        ]
+      );
+    }
+
+    // If Faculty: update faculty_profiles
+    if (targetUser.role === "faculty") {
+      await pool.query(
+        `
+        INSERT INTO faculty_profiles (user_id, employee_id, department, designation, updated_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (user_id) DO UPDATE
+        SET employee_id = COALESCE(NULLIF($2, ''), faculty_profiles.employee_id),
+            department = COALESCE(NULLIF($3, ''), faculty_profiles.department),
+            designation = COALESCE(NULLIF($4, ''), faculty_profiles.designation),
+            updated_at = NOW()
+        `,
+        [
+          userId,
+          employeeId ? String(employeeId).trim() : "",
+          department ? String(department).trim() : "",
+          designation ? String(designation).trim() : ""
+        ]
+      );
+    }
+
+    const updatedSummary = await fetchUserSummary(userId);
+    res.json({
+      message: `${targetUser.role === "student" ? "Student" : targetUser.role === "faculty" ? "Faculty" : "User"} details updated successfully.`,
+      user: updatedSummary
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

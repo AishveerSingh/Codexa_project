@@ -16,7 +16,7 @@ const submissionRouter = Router();
 
 submissionRouter.post("/run", requireAuth, runSubmission);
 submissionRouter.post("/", requireAuth, createSubmission);
-submissionRouter.get("/", requireAuth, requireRole("admin"), getAdminSubmissions);
+submissionRouter.get("/", requireAuth, requireRole("admin", "faculty"), getAdminSubmissions);
 submissionRouter.get(
   "/student/:studentId",
   requireAuth,

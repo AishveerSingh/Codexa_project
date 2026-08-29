@@ -14,7 +14,8 @@ import {
   registerFaculty,
   registerStudent,
   resetStudentPassword,
-  updateCurrentUser
+  updateCurrentUser,
+  updateUserById
 } from "../controllers/user.controller.js";
 import { requireAuth, requireMongoUser, requireRole } from "../middleware/auth.middleware.js";
 
@@ -41,6 +42,7 @@ userRouter.get("/", requireAuth, requireRole("admin"), getUsers);
 
 const uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 userRouter.get(`/:userId(${uuidPattern})`, requireAuth, requireRole("admin"), getUserById);
+userRouter.put(`/:userId(${uuidPattern})`, requireAuth, requireRole("admin"), updateUserById);
 userRouter.put(`/:userId(${uuidPattern})/reset-password`, requireAuth, requireRole("admin"), resetStudentPassword);
 userRouter.delete(`/:userId(${uuidPattern})`, requireAuth, requireRole("admin"), deleteUser);
 

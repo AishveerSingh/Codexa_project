@@ -144,7 +144,7 @@ export default function FacultyDashboard() {
           },
           {
             label: "Employee ID",
-            value: profile?.employee_id || profile?.employeeId || "EMP-2026-88",
+            value: profile?.employee_id || profile?.employeeId || "N/A",
             note: "Institute record"
           }
         ]}
